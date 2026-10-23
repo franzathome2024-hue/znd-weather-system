@@ -1,0 +1,51 @@
+name = "znd-weather-system"
+main = "src/worker/index.js"
+compatibility_date = "2025-03-04"
+compatibility_flags = ["nodejs_compat"]
+
+# ---------- Static frontend (served by the Worker) ----------
+[assets]
+directory = "./public"
+binding = "ASSETS"
+# Fail open on missing asset so our Worker still runs for API routes
+not_found_handling = "single-page-application"
+
+# ---------- KV namespaces (production IDs are set via secrets/wrangler) ----------
+# Create these with: wrangler kv namespace create FORECAST_CACHE
+#                    wrangler kv namespace create BULLETIN_STATE
+# Then paste the IDs into the [[kv_namespaces]] block below (or add via `wrangler kv namespace ...`).
+# [[kv_namespaces]]
+# binding = "FORECAST_CACHE"
+# id      = ""
+# preview_id = ""
+# [[kv_namespaces]]
+# binding = "BULLETIN_STATE"
+# id      = ""
+# preview_id = ""
+
+# ---------- Scheduled trigger: hourly checks ----------
+[triggers]
+crons = ["0 * * * *"]   # Every hour on the hour (Asia/Manila is UTC+8; UTC cron is fine)
+
+# ---------- Environment variables (non-secret) ----------
+[vars]
+ENVIRONMENT = "production"
+OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast"
+FORECAST_DAYS = "7"
+FACEBOOK_PUBLISH_ENABLED = "false"
+STALE_AFTER_HOURS = "8"
+MAX_RETRIES_PER_REQUEST = "2"
+REQUEST_TIMEOUT_MS = "15000"
+
+# ---------- Bindings for secrets (set via `wrangler secret put NAME`) ----------
+# Required: none for v0.1 when only Open-Meteo (no key) is used.
+# Optional (when Facebook publishing is enabled):
+#   FACEBOOK_PAGE_ACCESS_TOKEN
+#   FACEBOOK_PAGE_ID
+
+# ---------- Preview / dev environment ----------
+[env.dev]
+name = "znd-weather-system-dev"
+[env.dev.vars]
+ENVIRONMENT = "development"
+FORECAST_DAYS = "3"

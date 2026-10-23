@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ceb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>ZND Weather v0.1 — Zamboanga del Norte Multi-Model Forecast</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E🌦️%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/styles.css">
+<!-- Leaflet CSS/JS (pinned version, CDN with SRI integrity for baseline). -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-kicker">ZAMBOANGA DEL NORTE</span>
+    <h1>Multi-Model Weather <span class="muted">v0.1</span></h1>
+  </div>
+  <div class="meta">
+    <div class="meta-row" id="lastUpdate">—</div>
+    <div class="meta-row" id="modelCount">—</div>
+  </div>
+</header>
+
+<main class="grid">
+  <section class="panel controls">
+    <div class="ctrl">
+      <label for="dateSelect">Forecast date</label>
+      <select id="dateSelect"></select>
+    </div>
+    <div class="ctrl">
+      <label for="varSelect">Temperature map</label>
+      <select id="varSelect">
+        <option value="tmax">Daily HIGH (Tmax)</option>
+        <option value="tmin">Daily LOW (Tmin)</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label for="locSearch">Location</label>
+      <input id="locSearch" type="search" placeholder="Pangitaa ang lungsod…" autocomplete="off">
+      <ul id="locList" class="loc-list" role="listbox"></ul>
+    </div>
+    <div class="ctrl btns">
+      <button id="btnBulletin" type="button">Bisaya bulletin</button>
+      <button id="btnRefresh" type="button">Refresh</button>
+    </div>
+    <div id="warnStale" class="warn hidden">⚠ Forecast is stale — background refresh in progress.</div>
+    <div id="warnErrors" class="warn hidden"></div>
+  </section>
+
+  <section class="panel map-panel">
+    <div id="map" role="img" aria-label="Temperature map of Zamboanga del Norte"></div>
+    <div class="legend" id="mapLegend"></div>
+  </section>
+
+  <section class="panel numbers">
+    <h2>Selected location</h2>
+    <div id="locDetail">
+      <div class="muted small">Pagpili og lungsod gikan sa lista o mapa.</div>
+    </div>
+    <h2>Per-model values (°C)</h2>
+    <div class="table-wrap">
+      <table id="modelTable" class="model-table">
+        <thead><tr><th>Model</th><th>High</th><th>Low</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel datatable-panel">
+    <h2>All locations — consensus high / low (°C)</h2>
+    <div class="table-wrap">
+      <table id="allTable" class="all-table">
+        <thead><tr><th>Location</th><th>Low</th><th>High</th><th>Models</th><th>Spread</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel bulletin-panel">
+    <h2>Bisaya text bulletin (plain, low-data, copy-ready)</h2>
+    <pre id="bulletinText" class="bulletin" aria-live="polite">Loading…</pre>
+    <div class="small muted">This is plain text only — no image required to read. Copy-paste directly to Facebook.</div>
+  </section>
+
+  <section class="panel sources-panel">
+    <h2>Source & attribution</h2>
+    <div id="sourceBlock" class="small"></div>
+    <p class="disclaimer small muted">Forecasts are point-based representative values at each municipal centre and can differ for inland/coastal barangays. Consensus uses the median across available global models. Follow DOST-PAGASA for official warnings.</p>
+  </section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "name": "znd-weather-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-model weather forecast system for Zamboanga del Norte, Philippines — Cloudflare Workers backend + static frontend.",
+  "type": "module",
+  "main": "src/worker/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "node scripts/build-frontend.mjs",
+    "deploy": "npm run build && wrangler deploy",
+    "test": "node --test test/",
+    "test:verbose": "node --test --test-reporter=spec test/",
+    "fetch:live": "node scripts/fetch-live.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
