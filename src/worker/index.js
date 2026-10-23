@@ -3,51 +3,57 @@
 // Responsibilities:
 //   - Serve static frontend assets from the /public directory (bound via ASSETS).
 //   - Expose JSON API routes:
-//       GET /api/forecast        -> full province bundle (refreshes if stale)
-//       GET /api/forecast/raw    -> same, force-fresh (skips cache)
+//       GET /api/forecast        -> full province bundle (reads KV cache; refreshes if stale)
+//       GET /api/forecast/raw    -> same, force-fresh
 //       GET /api/locations       -> the 27 locations + coordinates
 //       GET /api/models          -> implemented vs unavailable model matrix
-//       GET /api/bulletin        -> plain-text Bisaya bulletin (today)
-//       GET /api/bulletin?day=N  -> day offset N (0=today,1=tomorrow,...)
+//       GET /api/bulletin        -> plain-text Bisaya bulletin
+//       GET /api/healthz         -> health, cache status, version
 //       POST /api/scheduler/run  -> admin (shared-secret gated) manual trigger
-//   - On the scheduled() cron handler, refresh the cache (no publishing by default).
+//   - On the scheduled() cron handler, refresh cache (no publishing by default).
 //
 // Security:
 //   - No API keys are required for v0.1 (Open-Meteo is keyless at non-commercial volumes).
 //   - Facebook publishing is OFF by default and requires a secret + explicit enable flag.
 //   - Secrets are read from env, never hardcoded.
+//   - Per-locality last-known-good preservation ensures failed/partial fetches do not wipe data.
+//   - A simple in-memory + KV refresh lock prevents concurrent refreshes from clobbering newer data.
 
 import { runPipeline } from "../pipeline.js";
 import { LOCATIONS } from "../locations.js";
 import { IMPLEMENTED_MODELS, UNAVAILABLE_MODELS, OPEN_METEO_ATTRIBUTION, MODEL_REGISTRY, FEED_COUNTS } from "../models.js";
 import { generateBisayaBulletin } from "../bulletin/bisaya.js";
 
+const CACHE_VERSION = "znd-forecast-v0.2";
+const REFRESH_LOCK_KEY = "znd:forecast:refresh-lock";
+const REFRESH_LOCK_TTL_S = 60 * 10; // 10 minutes — refresh must complete well within this
+const DEFAULT_STALE_HOURS = 8;
+const DEFAULT_CACHE_TTL_S = 60 * 60 * 4;
+
 function cacheKeyFor(days) {
-  return `znd:forecast:v0.1:days${days}`;
+  return `${CACHE_VERSION}:days${days}`;
 }
 function staleMs(env) {
-  return 1000 * 60 * 60 * (parseInt(env?.STALE_AFTER_HOURS || "8", 10) || 8);
+  return 1000 * 60 * 60 * clamp(parseInt(env?.STALE_AFTER_HOURS || String(DEFAULT_STALE_HOURS), 10) || DEFAULT_STALE_HOURS, 1, 72);
 }
 function requestTimeout(env) {
-  return parseInt(env?.REQUEST_TIMEOUT_MS || "15000", 10);
+  return clamp(parseInt(env?.REQUEST_TIMEOUT_MS || "15000", 10) || 15000, 2000, 60000);
 }
 function maxRetries(env) {
-  return parseInt(env?.MAX_RETRIES_PER_REQUEST || "2", 10);
+  return clamp(parseInt(env?.MAX_RETRIES_PER_REQUEST || "2", 10) || 2, 0, 5);
 }
 function forecastDays(env) {
-  return Math.min(Math.max(parseInt(env?.FORECAST_DAYS || "7", 10) || 7, 1), 16);
+  return clamp(parseInt(env?.FORECAST_DAYS || "7", 10) || 7, 1, 16);
 }
+function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+// In-memory refresh lock (process-local). KV lock protects across Workers.
+let inMemoryRefreshRunning = null; // promise of in-flight refresh
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-
-    // --- API routes ---
-    if (url.pathname.startsWith("/api/")) {
-      return handleApi(request, env, ctx);
-    }
-
-    // --- Static assets (frontend) ---
+    if (url.pathname.startsWith("/api/")) return handleApi(request, env, ctx);
     if (env.ASSETS && typeof env.ASSETS.fetch === "function") {
       return env.ASSETS.fetch(request);
     }
@@ -55,18 +61,25 @@ export default {
   },
 
   async scheduled(controller, env, ctx) {
-    // Hourly cron: refresh forecast cache. We do NOT publish to Facebook
-    // unless FACEBOOK_PUBLISH_ENABLED === "true" AND a successful test post
-    // has been explicitly configured.
-    ctx.waitUntil(refreshForecast(env, { scheduled: true }));
+    ctx.waitUntil((async () => {
+      const days = forecastDays(env);
+      try {
+        await refreshForecast(env, { reason: "scheduled", days });
+      } catch (e) {
+        console.error("scheduled refresh failed:", e);
+      }
+    })());
   },
 };
 
 async function handleApi(request, env, ctx) {
   const url = new URL(request.url);
   try {
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders() });
+    }
     if (url.pathname === "/api/locations") {
-      return json({ locations: LOCATIONS, bounds: { minLat: 7.2, maxLat: 8.8, minLon: 122.0, maxLon: 123.7 } });
+      return json({ locations: LOCATIONS, bounds: { minLat: 7.0, maxLat: 9.0, minLon: 121.8, maxLon: 124.0 } });
     }
     if (url.pathname === "/api/models") {
       return json({
@@ -75,6 +88,7 @@ async function handleApi(request, env, ctx) {
           priority: m.priority, nativeResKm: m.nativeResKm,
           license: m.license, attribution: m.attribution,
           aliasGroup: m.aliasGroup, evidence: m.evidence,
+          lastVerifiedAt: m.lastVerifiedAt,
         })),
         unavailable: UNAVAILABLE_MODELS,
         registry: MODEL_REGISTRY.map((m) => ({
@@ -83,7 +97,7 @@ async function handleApi(request, env, ctx) {
           productType: m.productType, nativeResolution: m.nativeResolution,
           geographicCoverage: m.geographicCoverage, availabilityStatus: m.availabilityStatus,
           consensusEligible: m.consensusEligible, exclusionReason: m.exclusionReason,
-          lastVerifiedAt: m.lastVerifiedAt,
+          lastVerifiedAt: m.lastVerifiedAt, lastSuccessfulRun: m.lastSuccessfulRun,
           license: m.license, attributionRequirements: m.attributionRequirements,
         })),
         feedCounts: FEED_COUNTS,
@@ -92,27 +106,38 @@ async function handleApi(request, env, ctx) {
     }
     if (url.pathname === "/api/forecast" || url.pathname === "/api/forecast/raw") {
       const force = url.searchParams.get("force") === "1" || url.pathname === "/api/forecast/raw";
-      const days = Math.min(Math.max(parseInt(url.searchParams.get("days") || String(forecastDays(env)), 10), 1), 16);
+      const days = clamp(parseInt(url.searchParams.get("days") || String(forecastDays(env)), 10) || forecastDays(env), 1, 16);
       const bundle = await getForecast(env, ctx, { force, days });
       return json(bundle);
     }
     if (url.pathname === "/api/bulletin") {
-      const day = Math.min(Math.max(parseInt(url.searchParams.get("day") || "0", 10), 0), 6);
+      const day = clamp(parseInt(url.searchParams.get("day") || "0", 10) || 0, 0, 6);
       const bundle = await getForecast(env, ctx, { force: false, days: 7 });
       const text = generateBisayaBulletin(bundle, day);
-      return new Response(text, {
-        headers: { "content-type": "text/plain; charset=utf-8", ...corsHeaders() },
-      });
+      return new Response(text, { headers: { "content-type": "text/plain; charset=utf-8", ...corsHeaders() } });
     }
     if (url.pathname === "/api/scheduler/run" && request.method === "POST") {
       if (!await isAuthorized(request, env)) {
         return new Response("Unauthorized", { status: 401, headers: corsHeaders() });
       }
-      const bundle = await refreshForecast(env, { manual: true });
-      return json({ ok: true, summary: bundle.summary, completedAt: bundle.completedAt });
+      const bundle = await refreshForecast(env, { reason: "manual", days: forecastDays(env) });
+      return json({ ok: true, summary: bundle.summary, completedAt: bundle.completedAt,
+                    partialRefresh: bundle.partialRefresh, fullOutage: bundle.fullOutage });
     }
     if (url.pathname === "/api/healthz") {
-      return json({ ok: true, version: "znd-weather-v0.1", t: new Date().toISOString() });
+      const cache = await readCache(env, forecastDays(env));
+      const hasKv = !!env.FORECAST_CACHE;
+      const age = cache?.completedAt ? Date.now() - new Date(cache.completedAt).getTime() : null;
+      return json({
+        ok: true, version: CACHE_VERSION, t: new Date().toISOString(),
+        persistentCache: hasKv ? "enabled" : "disabled (in-memory only; data not durable across restarts)",
+        kvBindingConfigured: hasKv,
+        hasCachedForecast: !!cache,
+        cacheAgeMs: age,
+        cacheStale: age != null ? age > staleMs(env) : null,
+        facebookPublishingEnabled: env.FACEBOOK_PUBLISH_ENABLED === "true",
+        environment: env.ENVIRONMENT || "production",
+      });
     }
     return new Response("Not Found", { status: 404, headers: corsHeaders() });
   } catch (e) {
@@ -120,68 +145,140 @@ async function handleApi(request, env, ctx) {
   }
 }
 
-async function getForecast(env, ctx, { force = false, days = 7 } = {}) {
-  const store = env.FORECAST_CACHE; // KV binding (optional)
-  const key = cacheKeyFor(days);
+async function readCache(env, days) {
+  const store = env.FORECAST_CACHE;
+  if (!store) return null;
+  try {
+    const raw = await store.get(cacheKeyFor(days));
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (_) { return null; }
+}
 
-  if (!force && store) {
-    try {
-      const cached = await store.get(key);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        const ageMs = Date.now() - new Date(parsed.completedAt || parsed.startedAt || 0).getTime();
-        if (ageMs <= staleMs(env)) {
-          parsed.fromCache = true;
-          parsed.stale = false;
-          return parsed;
-        }
-        parsed.fromCache = true;
-        parsed.stale = true;
-        if (ctx && typeof ctx.waitUntil === "function") {
-          ctx.waitUntil(refreshForecast(env, { reason: "stale", days }).catch((e) => console.error("background refresh failed:", e)));
-        }
-        return parsed;
-      }
-    } catch (_) { /* fall through */ }
+async function getForecast(env, ctx, { force = false, days = 7 } = {}) {
+  // 1) If KV exists, try to read cached.
+  const cached = await readCache(env, days);
+  const hasKv = !!env.FORECAST_CACHE;
+
+  if (!force && cached) {
+    const ageMs = Date.now() - new Date(cached.completedAt || cached.startedAt || 0).getTime();
+    if (ageMs <= staleMs(env)) {
+      cached.fromCache = true;
+      cached.stale = false;
+      cached.persistentCacheUsed = hasKv;
+      return cached;
+    }
+    // Stale: return cached immediately, refresh in background
+    cached.fromCache = true;
+    cached.stale = true;
+    cached.persistentCacheUsed = hasKv;
+    if (ctx && typeof ctx.waitUntil === "function") {
+      ctx.waitUntil(refreshForecast(env, { reason: "stale", days }).catch((e) => console.error("background refresh failed:", e)));
+    }
+    return cached;
   }
 
+  // No cached value (or force): run refresh
   return await refreshForecast(env, { reason: force ? "force" : "cold", days });
 }
 
-async function refreshForecast(env, _opts = {}) {
+async function acquireLock(env) {
   const store = env.FORECAST_CACHE;
-  const baseUrl = env.OPEN_METEO_BASE_URL || undefined;
+  // Always acquire the in-memory lock (single-isolate dedup).
+  if (inMemoryRefreshRunning) return { acquired: false, promise: inMemoryRefreshRunning, inMemory: true };
+  let kvAcquired = false;
+  if (store && store.put) {
+    try {
+      // KV put-if-not-exists isn't directly available; we use a short TTL and
+      // tolerate a tiny race window — Worker isolates usually serialize cron.
+      // We write a lock value that contains our random nonce + timestamp.
+      const existing = await store.get(REFRESH_LOCK_KEY).catch(() => null);
+      if (existing) {
+        try {
+          const info = JSON.parse(existing);
+          if (info && info.until > Date.now()) return { acquired: false, inMemory: false, kv: true };
+        } catch { /* stale / malformed lock; overwrite */ }
+      }
+      const nonce = Math.random().toString(36).slice(2);
+      await store.put(REFRESH_LOCK_KEY, JSON.stringify({ nonce, until: Date.now() + REFRESH_LOCK_TTL_S * 1000 }), { expirationTtl: REFRESH_LOCK_TTL_S });
+      kvAcquired = true;
+    } catch (_) { kvAcquired = false; }
+  }
+  const promise = (async () => {
+    try {
+      return await runPipeline({
+        fetchFn: globalThis.fetch.bind(globalThis),
+        store: storeFromEnv(env),
+        days: forecastDays(env),
+        baseUrl: env.OPEN_METEO_BASE_URL || undefined,
+        timeoutMs: requestTimeout(env),
+        maxRetries: maxRetries(env),
+        force: true,
+      });
+    } finally {
+      if (kvAcquired && env.FORECAST_CACHE?.delete) {
+        try { await env.FORECAST_CACHE.delete(REFRESH_LOCK_KEY); } catch (_) {}
+      }
+      inMemoryRefreshRunning = null;
+    }
+  })();
+  inMemoryRefreshRunning = promise;
+  return { acquired: true, promise };
+}
+
+async function refreshForecast(env, _opts = {}) {
   const days = _opts.days || forecastDays(env);
-  const bundle = await runPipeline({
-    fetchFn: globalThis.fetch.bind(globalThis),
-    store: store ? {
-      get: (k) => store.get(k),
-      put: (k, v, opts) => store.put(k, v, opts),
-    } : undefined,
-    days, baseUrl, force: true,
-    timeoutMs: requestTimeout(env),
-    maxRetries: maxRetries(env),
-  });
-  return bundle;
+  const lock = await acquireLock(env);
+  if (!lock.acquired && lock.promise) {
+    // Another in-flight refresh; wait for it to finish and return its result.
+    try { return await lock.promise; }
+    catch (e) {
+      // If the in-flight refresh fails, fall through to try again? No — respect
+      // the lock; the caller will see whatever cache exists.
+      const cached = await readCache(env, days);
+      if (cached) { cached.stale = true; cached.fromCache = true; return cached; }
+      throw e;
+    }
+  }
+  if (!lock.acquired) {
+    // KV lock held by another Worker; return whatever cache we have (stale is ok).
+    const cached = await readCache(env, days);
+    if (cached) {
+      cached.fromCache = true; cached.stale = true; cached.lockContended = true;
+      return cached;
+    }
+    // No cache and lock held — wait briefly and try one more time
+    await sleep(500);
+    return refreshForecast(env, { ..._opts, reason: _opts.reason + ":lock-retry" });
+  }
+  return await lock.promise;
+}
+
+function storeFromEnv(env) {
+  const s = env.FORECAST_CACHE;
+  if (!s) return undefined;
+  return {
+    get: (k) => s.get(k),
+    put: (k, v, opts) => s.put(k, v, opts),
+  };
 }
 
 async function isAuthorized(request, env) {
-  if (env.ADMIN_SECRET) {
-    const auth = request.headers.get("authorization") || "";
-    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    return timingSafeEqual(token, env.ADMIN_SECRET);
-  }
-  // If no ADMIN_SECRET is configured, deny by default.
-  return false;
+  if (!env.ADMIN_SECRET) return false;
+  const auth = request.headers.get("authorization") || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  return timingSafeEqual(token, env.ADMIN_SECRET);
 }
 
 function timingSafeEqual(a, b) {
   if (typeof a !== "string" || typeof b !== "string") return false;
   if (a.length !== b.length) return false;
   let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCode(i);
   return diff === 0;
 }
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 function json(obj, { status = 200 } = {}) {
   return new Response(JSON.stringify(obj), {

@@ -36,7 +36,7 @@ export const MODEL_REGISTRY = [
     provider: "Open-Meteo (redistributes ECMWF)",
     endpoint: "https://api.open-meteo.com/v1/forecast",
     requestedModelId: "ecmwf_ifs",
-    verifiedProduct: "ECMWF IFS high-resolution deterministic (≈9 km), redistributed via Open-Meteo. NOTE: this is Open-Meteo's highest-resolution ECMWF deterministic product served as 'ecmwf_ifs'; latency reflects Open-Meteo ingest (~6-7 h post-run), not raw ECMWF dissemination latency.",
+    verifiedProduct: "ECMWF IFS high-resolution deterministic (≈9 km / 0.125°), redistributed via Open-Meteo. IMPORTANT QUALIFICATION: Open-Meteo's free Forecast API does not serve the operational ~9 km ECMWF IFS HRES at native latency. Per Open-Meteo docs the `ecmwf_ifs` identifier on the free API maps to their best-available ECMWF deterministic surface product (which at times has been the 0.25° / 0.2° regridded version or a lower-latency subset); latency reflects Open-Meteo ingest (~6-7 h post-run), not raw ECMWF dissemination. Label 'ECMWF (Open-Meteo, ~9 km class)' in the UI and do not claim real-time HRES 00Z/12Z access.",
     productType: "deterministic_nwp",
     nativeResolution: "≈9 km",
     geographicCoverage: "Global",
@@ -286,9 +286,12 @@ export const MODEL_REGISTRY = [
     availabilityStatus: "returned_nulls",
     evidence: {
       verificationDate: "2026-10-23",
-      point: "Dipolog City",
-      sampleTmaxFirst3: [null, null, null],
-      sampleTminFirst3: [null, null, null],
+      pointsTested: ["Dipolog City (8.5872,123.3408)", "Sydney AU (-33.87,151.21)"],
+      globalNullFinding: "Confirmed 2026-10-23: bom_access_global returns all-null daily tmax/tmin even for Sydney, Australia — NOT a Philippines coverage gap. Consistent with Open-Meteo's notice that BOM open-data delivery has been temporarily suspended during platform upgrades.",
+      dipologSampleTmaxFirst3: [null, null, null],
+      dipologSampleTminFirst3: [null, null, null],
+      sydneySampleTmaxFirst3: [null, null, null],
+      sydneySampleTminFirst3: [null, null, null],
       openMeteoBomNotice: "https://open-meteo.com/en/docs/bom-api ('open-data delivery has been temporarily suspended')",
       bomDirect: "https://www.bom.gov.au/nwp/doc/access/NWPData.shtml (registered users FTP, subscription fees may apply)",
       rejectedIds: ["access_global12 returned HTTP 400 from Open-Meteo"],
@@ -485,8 +488,9 @@ export const UNAVAILABLE_MODELS = MODEL_REGISTRY
   }));
 
 export const OPEN_METEO_ATTRIBUTION =
-  "Weather data by Open-Meteo.com (CC-BY 4.0, non-commercial; <10,000 calls/day). " +
-  "Underlying NWP centres: ECMWF, DWD, NCEP, UK Met Office, Météo-France, ECCC, JMA.";
+  "Weather data by Open-Meteo.com (CC-BY 4.0, non-commercial free tier: <10,000 calls/day, <5,000/hour, <600/min). " +
+  "Commercial use requires an Open-Meteo API subscription. " +
+  "Underlying NWP centres: ECMWF, DWD ICON, NCEP GFS, UK Met Office, Météo-France ARPEGE, ECCC GEM, JMA GSM.";
 
 function parseResolutionKm(s) {
   if (!s) return null;

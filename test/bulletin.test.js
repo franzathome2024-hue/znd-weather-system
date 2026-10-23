@@ -66,8 +66,8 @@ test("Bisaya bulletin contains required structural elements and no invented rain
   // Must NOT fabricate rain probabilities — there should be no "tsansa sa ulan"
   // or specific numeric percentages.
   assert.doesNotMatch(b, /\b\d{1,3}%\b/, "must not invent percentage probabilities");
-  // Last successful update timestamp present (PST)
-  assert.match(b, /PST/, "must show last update in PST");
+  // Last successful update timestamp present (Philippine Time / Asia/Manila)
+  assert.match(b, /PHT \(Asia\/Manila\)|Philippine Time/, "must show last update in Philippine Time / PHT");
 });
 
 test("Bulletin mentions missing-data locations when some fail", () => {

@@ -37,7 +37,7 @@ export function generateBisayaBulletin(bundle, dayIndex = 0) {
   const dateObj = parseDateInManila(date);
   const weekday = WEEKDAY_CEB[dateObj.getDay()];
   const month = MONTH_CEB[dateObj.getMonth() + 1];
-  lines.push(`${weekday}, ${dateObj.getDate()} ${month} ${dateObj.getFullYear()}  (PST / GMT+8)`);
+  lines.push(`${weekday}, ${dateObj.getDate()} ${month} ${dateObj.getFullYear()}  (Philippine Time / Asia/Manila, UTC+8)`);
   lines.push("");
 
   const rows = LOCATIONS.map((loc) => {
@@ -94,7 +94,7 @@ export function generateBisayaBulletin(bundle, dayIndex = 0) {
 
   // Source / attribution block
   const nModels = MODELS.length;
-  const lastUpdate = formatPST(bundle.completedAt || bundle.startedAt);
+  const lastUpdate = formatPHTime(bundle.completedAt || bundle.startedAt);
   lines.push(`— Mga modelo: ${nModels} ka global weather models (${MODELS.map(m => m.label.split(" ")[0]).slice(0, 4).join(", ")} ...). Konsenso: median sa tanang modelo.`);
   lines.push(`— Forecast valid date: ${date} (Asia/Manila). Kataposang update: ${lastUpdate}.`);
   lines.push(`— Mga lokasyon nga adunay datos: ${nAvailable}/27.`);
@@ -112,7 +112,7 @@ function pickDate(bundle, dayIndex) {
   for (const loc of bundle.locations || []) {
     if (loc.dates && loc.dates[dayIndex]) return loc.dates[dayIndex];
   }
-  // Fallback: current PST date.
+  // Fallback: current Philippine Time date.
   const now = new Date();
   now.setUTCHours(now.getUTCHours() + 8);
   return now.toISOString().slice(0, 10);
@@ -124,11 +124,11 @@ function parseDateInManila(dateStr) {
   return new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
 }
 
-function formatPST(iso) {
+function formatPHTime(iso) {
   const d = new Date(iso);
-  d.setUTCHours(d.getUTCHours() + 8); // PST = UTC+8 display
+  d.setUTCHours(d.getUTCHours() + 8); // Philippine Time = Asia/Manila = UTC+8
   const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} PST`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} PHT (Asia/Manila)`;
 }
 
 function formatRow(r) {

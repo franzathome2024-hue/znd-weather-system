@@ -1,7 +1,9 @@
 // ZND Weather v0.1 frontend — MapLibre GL JS, vanilla ES2020, no build step.
-// Uses locally hosted GADM 4.1 municipal-boundary GeoJSON for choropleth
-// rendering; OSM raster tiles for basemap. Mapbox is not used; no Mapbox
-// tokens required.
+// Uses a locally generated Voronoi-approximation GeoJSON (NOT official admin
+// boundaries — for visualization only) for choropleth rendering; OSM raster
+// tiles for basemap. Mapbox is not used; no Mapbox tokens required. If the
+// GeoJSON fails to load or MapLibre fails to initialize, the app falls back
+// to table/text/bulletin views.
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -25,7 +27,12 @@ init().catch((e) => {
 async function init() {
   bindUi();
   await Promise.all([loadMeta(), loadGeo(), loadForecast()]);
-  initMap();
+  try { initMap(); }
+  catch (e) {
+    console.warn("Map failed to initialize — table/bulletin views remain available:", e.message);
+    const mapEl = document.getElementById("map");
+    if (mapEl) mapEl.innerHTML = '<div style="padding:24px;color:#555;font-family:sans-serif;text-align:center">Mapa dili available karon. Gamita ang table/list ug bulletin sa ubos.</div>';
+  }
   render();
 }
 
@@ -47,13 +54,25 @@ async function loadMeta() {
 }
 
 async function loadGeo() {
-  try {
-    const r = await fetch("/data/zamboanga_del_norte_municipalities.geojson");
-    if (r.ok) state.geo = await r.json();
-  } catch (e) {
-    state.geo = null;
-    console.warn("Municipal boundaries unavailable:", e.message);
+  // Try the license-safe Voronoi approximation first; fall back to empty and
+  // rely on the table/bulletin views if anything fails.
+  const candidates = [
+    "/data/zamboanga_del_norte_approx.geojson",
+    "/data/zamboanga_del_norte_municipalities.geojson",
+  ];
+  for (const url of candidates) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) {
+        const geo = await r.json();
+        if (geo && geo.features && geo.features.length) { state.geo = geo; return; }
+      }
+    } catch (e) {
+      console.warn("Geo load failed for", url, e.message);
+    }
   }
+  state.geo = null;
+  console.warn("Municipal boundaries unavailable — using table/bulletin fallback.");
 }
 
 async function loadForecast(force = false) {
@@ -209,7 +228,7 @@ function render() {
 function renderMeta() {
   const b = state.bundle;
   const updated = b.completedAt || b.startedAt;
-  $("#lastUpdate").textContent = `Updated: ${formatPST(updated)}${b.fromCache ? " (cached" + (b.stale ? ", STALE" : "") + ")" : ""}`;
+  $("#lastUpdate").textContent = `Updated: ${formatPHTime(updated)}${b.fromCache ? " (cached" + (b.stale ? ", STALE" : "") + ")" : ""}`;
   // Count eligible/verified models from bundle
   const nModels = (b.models || []).length;
   const ok = b.summary?.successfulLocations ?? 0;
@@ -512,10 +531,10 @@ function tempColor(t, lo, hi, isSpread = false) {
   return `rgb(${stops[stops.length-1][1].join(",")})`;
 }
 
-function formatPST(iso) {
+function formatPHTime(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
-  d.setUTCHours(d.getUTCHours() + 8);
+  d.setUTCHours(d.getUTCHours() + 8); // Philippine Time = Asia/Manila = UTC+8
   const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} PST`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} PHT (Asia/Manila)`;
 }

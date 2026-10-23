@@ -1,13 +1,14 @@
 # znd-weather-system
 
-**Version:** v0.1 (working, runnable)
+**Version:** v0.1 (working, runnable; corrected 2026-10-23)
 **Scope:** Multi-model numerical weather forecast system for **Zamboanga del Norte, Philippines** — all 27 cities and municipalities.
-**Stack:** Cloudflare Workers (ES modules) + static HTML/CSS/JS frontend served from Workers Assets. Data via [Open-Meteo](https://open-meteo.com/) CC-BY 4.0 (non-commercial) aggregating 11 global NWP models.
+**Stack:** Cloudflare Workers (ES modules) + static HTML/CSS/JS frontend (MapLibre GL JS + OSM tiles) served from Workers Assets. Data via [Open-Meteo](https://open-meteo.com/) CC-BY 4.0 (non-commercial free tier) aggregating independently-verified global NWP models.
+**Repository visibility:** PUBLIC at `https://github.com/franzathome2024-hue/znd-weather-system` (visibility was not changed during this correction pass; the owner may set it to private from GitHub settings if desired).
 
 The system produces:
 
 - An **11-model consensus** (median) daily high and low temperature for each of the 27 Zamboanga del Norte LGUs.
-- A **responsive dashboard** with a Leaflet/OpenStreetMap temperature map (high and low), a model comparison table, a full data table, and source/warning metadata.
+- A **responsive dashboard** with a MapLibre GL JS / OpenStreetMap temperature choropleth (high and low) with automatic table/bulletin fallback if the map fails to load, a model comparison table, a full data table, and source/warning metadata.
 - A **natural Bisaya/Cebuano daily weather bulletin** (plain text, low-data, copy-paste ready for Facebook).
 - An **hourly scheduled refresh** (Cloudflare Cron Triggers) with bounded retries, stale-data fallback, and duplicate-publication prevention.
 - Facebook posting is **OFF by default** and requires explicit secret configuration and a successful dry run.
@@ -275,9 +276,92 @@ All tests pass on the version committed here. The test suite contains:
   (currently points-on-a-map only).
 - Historical run archive (KV → R2) for trend charts.
 
-## 11. License
+## 11. Corrections applied 2026-10-23
+
+A 13-priority correction pass was applied. Summary of changes:
+
+1. **Per-locality last-known-good (LKG) preservation.** `src/pipeline.js` rewritten with
+   `isValidLocBundle()`, per-location `fetchOne()` that treats all-null daily responses
+   as failures (not successes), `mergeWithCached()` that preserves prior valid data per
+   locality when a fresh fetch fails or returns all-null (e.g. the current BOM ACCESS-G
+   outage), and a `fullOutage`/`zeroFreshSuccesses`/`partialRefresh` flag set. Cache is
+   **never overwritten on zero fresh successes** so a total outage cannot wipe the last
+   good bundle.
+2. **Durable Cloudflare KV binding with dev/prod separation.** `wrangler.toml` updated:
+   dev (`[env.dev]`) vs production sections, KV IDs left as placeholders (production
+   namespaces will NOT be created without owner authorization). Worker exposes
+   `FORECAST_CACHE` binding, has an in-memory + KV refresh lock (10 min TTL) to avoid
+   concurrent refreshes, bounded retries with backoff, `stale-while-revalidate` serving,
+   and a `/api/healthz` endpoint reporting persistent-cache status, age, and staleness.
+3. **Model registry audit.**
+   - ACCESS-G (`bom_access_global`) updated: confirmed 2026-10-23 to return all-null
+     daily tmax/tmin even for Sydney, Australia — i.e. a global provider outage, not a
+     PH coverage gap, consistent with Open-Meteo's BOM-notice. Status `returned_nulls`.
+   - ECMWF label qualified: `ecmwf_ifs` on the free API is described as "ECMWF
+     (Open-Meteo, ~9 km class)" — we do not claim real-time HRES 00Z/12Z native latency.
+   - AICON, GRAPHCAST IFS, PANGU IFS documented with their license/self-host status.
+   - GFS alias de-dup documented (`gfs_seamless` vs `gfs013` byte-identical at Dipolog).
+   - MULTI-GLOBAL marked `excluded_by_design` (not an independent centre; consensus-
+     ineligible) and excluded from independent-contributor counts.
+4. **Counts separated** (config / verified / high-contributors / low-contributors /
+   excluded) in `aggregate.js` and in the UI feed-counts display; independent hi and lo
+   medians (highs and lows can come from different models); IQR and range exposed;
+   `few_models`/`all_missing`/`no_models` QC states retained for insufficient-data days.
+5. **Map / boundaries.** Frontend switched to a generated Voronoi-approximation GeoJSON
+   (`public/data/zamboanga_del_norte_approx.geojson`, 27 features) explicitly labelled
+   "NOT official administrative boundaries — for visualization only". The prior GADM
+   4.1 file was removed because GADM 4.1 license does not permit redistribution or
+   commercial use. Map initialization is wrapped in a try/catch; if MapLibre or GeoJSON
+   fails to load the UI falls back to the table/bulletin views. 27 LGUs verified.
+6. **Timezone labels.** References to bare "PST" replaced with "Philippine Time
+   (Asia/Manila, UTC+8)". Dates are still fetched with `timezone=Asia/Manila`.
+7. **Open-Meteo terms re-verified** (https://open-meteo.com/en/terms, 2026-10-23): CC-BY
+   4.0, non-commercial free tier, <10,000 calls/day, <5,000/hour, <600/min; commercial
+   use requires a paid subscription. Attribution text updated accordingly.
+8. **UI preserved.** All existing features (map, model table, data table, bulletin,
+   search, date picker) retained. No PAGASA impersonation — the bulletin carries an
+   explicit DOST-PAGASA advisory disclaimer.
+9. **Facebook off by default**, separate from refresh (refresh caches; publishing is
+   a separate, gated step that is not wired to automatic triggers in v0.1).
+10. **Regression tests.** 18 new tests added in `test/pipeline-lkg.test.js` and
+    `test/corrections.test.js` (34 total passing) covering: LKG preservation on single-
+    locality failure, LKG preservation on all-null response, cache preservation on
+    total outage, cache version isolation, never-inventing data, 27 LGUs present,
+    MULTI-GLOBAL exclusion, ACCESS-G global-null evidence, bulletin timezone labels,
+    PAGASA disclaimer, IQR/range, Voronoi disclaimer, Facebook default-off, and a
+    heuristic no-hardcoded-secrets scan.
+11. **Secrets.** No GitHub PAT, Facebook token, or private key is committed to the
+    source tree. The wrangler config uses placeholders for KV IDs and expects secrets
+    via `wrangler secret put`.
+12. **Repository visibility.** Reported as PUBLIC via the GitHub API on 2026-10-23.
+    Visibility was NOT changed during this pass (per instruction to not modify
+    production resources without authorization). Owner can change it from GitHub repo
+    Settings → General → Danger Zone → Change visibility.
+13. **Wrangler dry-run passes** (83.89 KiB total upload, gzip 21.69 KiB). No production
+    deployment was performed during this pass. The `dev` environment is configured for
+    sandbox testing but no KV namespaces were auto-created.
+
+### Verification status vocabulary (used in this README and in `/api/healthz`)
+
+- **implemented** — code is written and bundled.
+- **tested** — unit tests pass offline (`npm test`).
+- **configured** — wrangler/env wiring is in place.
+- **deployed** — `npm run deploy` has been run against a Cloudflare account.
+- **prod-verified** — a live production endpoint has been hit and returned expected
+  responses.
+
+At the time of this commit: core pipeline/cache logic and frontend are **implemented**
+and **tested**; wrangler bindings/cron are **configured**; production is **not
+deployed** and **not prod-verified** in this session.
+
+## 12. License
 
 MIT. Weather data © Open-Meteo.com (CC-BY 4.0, non-commercial; see
 https://open-meteo.com/en/terms). Underlying NWP centres retain their own
 licenses; this project does not redistribute raw model grids — it derives a
 median consensus from point forecasts served by Open-Meteo.
+
+The municipal-boundary GeoJSON (`public/data/zamboanga_del_norte_approx.geojson`) is a
+generated Voronoi approximation from municipal centroids and is NOT an official
+administrative boundary. It is included solely for visualization purposes; replace it
+with an authoritative PSA/OSM/PH-GOV boundary source before any publication-quality use.
