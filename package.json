@@ -14,7 +14,7 @@
     "fetch:live": "node scripts/fetch-live.mjs"
   },
   "devDependencies": {
-    "wrangler": "^3.78.0"
+    "wrangler": "^4.152.0"
   },
   "engines": {
     "node": ">=20"
