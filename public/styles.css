@@ -183,6 +183,7 @@ tr.missing td { color: var(--fg-dim); font-style: italic; }
   letter-spacing: 0.02em;
 }
 .badge.aiwp { color: var(--accent-2); border-color: var(--accent-2); opacity: 0.85; }
+.badge.pagasa { color: var(--accent-1, #d7a017); border-color: var(--accent-1, #d7a017); opacity: 0.9; font-weight: 600; }
 .mono { font-family: var(--mono); }
 
 .bulletin {

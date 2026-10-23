@@ -17,10 +17,14 @@ test("alias de-duplication removes gfs013 when identical to gfs_seamless", () =>
     { modelId: "ecmwf_aifs025_single", values: [29.0] },
   ];
   const out = aggregateDaily(series, dates);
-  // n should be 9, not 10 — gfs013 dropped
-  assert.equal(out[0].n, 9, `expected 9 independent contributors after GFS dedup, got ${out[0].n}`);
-  // Median of [29, 30, 30, 30, 32, 32, 32, 34, 34] = 32
-  assert.equal(out[0].consensus, 32);
+  // n_raw should be 9, n_after_trim 9 — gfs013 dropped before weighting
+  assert.equal(out[0].n_raw, 9, `expected 9 independent contributors after GFS dedup, got ${out[0].n_raw}`);
+  assert.equal(out[0].n, 9, `expected 9 contributors after outlier trim, got ${out[0].n}`);
+  assert.equal(out[0].consensusMethod, "weighted_mean");
+  // Weighted mean of [e=1.5, i=1.0, g=1.0, a=1.5, u=1.5, a=1.0, g=1.0, j=1.0, aifs=0.5]
+  //   = (1.5*30 + 1*34 + 1*32 + 1.5*30 + 1.5*32 + 1*34 + 1*32 + 1*30 + 0.5*29) / (1.5+1+1+1.5+1.5+1+1+1+0.5)
+  //   = (45+34+32+45+48+34+32+30+14.5) / 10.0 = 314.5/10 = 31.45 -> rounds to 31.5
+  assert.equal(out[0].consensus, 31.5);
   // dropped records should mention gfs013 duplicate of gfs_seamless
   const drop = out[0].dropped.find((d) => d.modelId === "gfs013");
   assert.ok(drop, "expected gfs013 in dropped list");

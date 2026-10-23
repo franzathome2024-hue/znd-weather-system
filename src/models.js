@@ -30,7 +30,36 @@
 //   "aggregate", "ai_self_host"
 
 export const MODEL_REGISTRY = [
-  // --- 1. ECMWF IFS HRES 00Z/12Z ---
+  // --- 0. PAGASA Provincial (Philippine official guidance, province-wide) ---
+  {
+    targetLabel: "PAGASA (Zamboanga del Norte provincial)",
+    provider: "PAGASA Mindanao PRSD (direct public-domain provincial forecast)",
+    endpoint: "https://www.pagasa.dost.gov.ph/api/regional/Mindanao/907200000  (cookie handshake + JSON POST; cached 4h in KV)",
+    requestedModelId: "pagasa_provincial",
+    verifiedProduct: "PAGASA twice-daily provincial forecast for Zamboanga del Norte (PSGC 0907200000). Today (day+night) plus 5-day extended outlook high/low temperatures. Province-wide values applied to all 27 ZN LGUs (PAGASA does not publish per-municipality temperature forecasts for ZN).",
+    productType: "official_nwp_human",
+    nativeResolution: "province",
+    geographicCoverage: "Zamboanga del Norte province",
+    availabilityStatus: "verified_pagasa",
+    evidence: {
+      verificationDate: "2026-10-23",
+      point: "Zamboanga del Norte province (PSGC 0907200000)",
+      sampleTmaxFirst3: [33, 35, 34],
+      sampleTminFirst3: [26, 26, 25],
+      accessMethod: "GET /regional-forecast/minprsd for october_session cookie; POST /api/regional/Mindanao/907200000 with X-Requested-With returns JSON outlook array length 6 (today + 5 days).",
+      license: "Philippine Government public domain (GOV.PH footer). PAGASA attribution required.",
+      sourceFile: "src/providers/pagasa.js",
+    },
+    lastVerifiedAt: "2026-10-23T11:20:00Z",
+    lastSuccessfulRun: "2026-10-23T08:36:00Z",
+    license: "Philippine Government public domain; PAGASA attribution required.",
+    attributionRequirements: "Attribute 'PAGASA-DOST' with link to https://www.pagasa.dost.gov.ph/. Scraping is minimal: 2 HTTPS requests per 4-hour refresh window, descriptive User-Agent, no bulk downloads.",
+    consensusEligible: true,
+    consensusWeight: 2.5,
+    aliasGroup: "pagasa_provincial",
+    source: "pagasa",
+    exclusionReason: null,
+  },
   {
     targetLabel: "ECMWF IFS HRES 00Z/12Z",
     provider: "Open-Meteo (redistributes ECMWF)",
@@ -57,7 +86,9 @@ export const MODEL_REGISTRY = [
     license: "CC-BY 4.0 (non-commercial via Open-Meteo); underlying ECMWF output redistribution via Open-Meteo",
     attributionRequirements: "Attribute 'ECMWF' and 'Open-Meteo.com'. Open-Meteo free tier: non-commercial only, <10,000 calls/day, <5,000/hour, <600/minute.",
     consensusEligible: true,
+    consensusWeight: 1.5,
     aliasGroup: "ecmwf_ifs_hires", // distinct from ecmwf_ifs025
+    source: "open-meteo",
     exclusionReason: null,
   },
   // --- 2. ECMWF AIFS ---
@@ -84,7 +115,9 @@ export const MODEL_REGISTRY = [
     license: "CC-BY 4.0 (non-commercial via Open-Meteo)",
     attributionRequirements: "Attribute 'ECMWF AIFS' and 'Open-Meteo.com'.",
     consensusEligible: true,
+    consensusWeight: 0.5,
     aliasGroup: "ecmwf_aifs",
+    source: "open-meteo",
     exclusionReason: null,
   },
   // --- 3. ICON (DWD ICON Global) ---
@@ -112,6 +145,8 @@ export const MODEL_REGISTRY = [
     license: "CC-BY 4.0 (non-commercial via Open-Meteo); DWD Open Data is freely available (https://opendata.dwd.de/)",
     attributionRequirements: "Attribute 'DWD ICON' and 'Open-Meteo.com'.",
     consensusEligible: true,
+    consensusWeight: 1,
+    source: "open-meteo",
     aliasGroup: "dwd_icon_global",
     exclusionReason: null,
   },
@@ -165,6 +200,8 @@ export const MODEL_REGISTRY = [
     license: "CC-BY 4.0 (non-commercial via Open-Meteo); NCEP GFS is U.S. government work (public domain)",
     attributionRequirements: "Attribute 'NCEP GFS' and 'Open-Meteo.com'.",
     consensusEligible: true,
+    consensusWeight: 1,
+    source: "open-meteo",
     aliasGroup: "ncep_gfs",
     exclusionReason: null,
   },
@@ -191,6 +228,8 @@ export const MODEL_REGISTRY = [
     license: "CC-BY 4.0 (non-commercial via Open-Meteo)",
     attributionRequirements: "Attribute 'NCEP AIGFS' and 'Open-Meteo.com'.",
     consensusEligible: true,
+    consensusWeight: 1.5,
+    source: "open-meteo",
     aliasGroup: "ncep_aigfs",
     exclusionReason: null,
   },
@@ -218,6 +257,8 @@ export const MODEL_REGISTRY = [
     license: "CC-BY 4.0 (non-commercial via Open-Meteo)",
     attributionRequirements: "Attribute 'UK Met Office' and 'Open-Meteo.com'.",
     consensusEligible: true,
+    consensusWeight: 1.5,
+    source: "open-meteo",
     aliasGroup: "ukmo_global",
     exclusionReason: null,
   },
@@ -244,6 +285,8 @@ export const MODEL_REGISTRY = [
     license: "CC-BY 4.0 (non-commercial via Open-Meteo)",
     attributionRequirements: "Attribute 'Météo-France ARPEGE' and 'Open-Meteo.com'.",
     consensusEligible: true,
+    consensusWeight: 1,
+    source: "open-meteo",
     aliasGroup: "meteo_france_arpege",
     exclusionReason: null,
   },
@@ -270,6 +313,8 @@ export const MODEL_REGISTRY = [
     license: "CC-BY 4.0 (non-commercial via Open-Meteo)",
     attributionRequirements: "Attribute 'ECCC GEM' and 'Open-Meteo.com'.",
     consensusEligible: true,
+    consensusWeight: 1,
+    source: "open-meteo",
     aliasGroup: "eccc_gem",
     exclusionReason: null,
   },
@@ -420,6 +465,8 @@ export const MODEL_REGISTRY = [
     license: "CC-BY 4.0 (non-commercial via Open-Meteo)",
     attributionRequirements: "Attribute 'JMA GSM' and 'Open-Meteo.com'.",
     consensusEligible: true,
+    consensusWeight: 1,
+    source: "open-meteo",
     aliasGroup: "jma_gsm",
     exclusionReason: null,
   },
@@ -446,7 +493,9 @@ export const MODEL_REGISTRY = [
     lastSuccessfulRun: null,
     license: "CC-BY 4.0 (non-commercial via Open-Meteo); NCEP GFS is U.S. public domain",
     attributionRequirements: "Attribute 'NCEP GFS 0.13°' and 'Open-Meteo.com'.",
-    consensusEligible: true, // tracked, but alias-de-duplication removes it when identical to gfs_seamless
+    consensusEligible: true,
+    consensusWeight: 1,
+    source: "open-meteo", // tracked, but alias-de-duplication removes it when identical to gfs_seamless
     aliasGroup: "ncep_gfs",
     exclusionReason: "Byte-identical to `gfs_seamless` at Dipolog on 2026-10-23; de-duplication logic will drop it from consensus whenever identical to another eligible member, but will keep it if values diverge on a given day.",
   },
@@ -540,7 +589,11 @@ export const AIWP_STALE_HOURS = 36;
 // Open-Meteo) and their consensusEligible=false keeps aggregate.js from
 // adding them to the median.
 export const IMPLEMENTED_MODELS = MODEL_REGISTRY
-  .filter((m) => (m.availabilityStatus === "verified" && m.consensusEligible) || m.availabilityStatus === "static_extract")
+  .filter((m) =>
+    (m.availabilityStatus === "verified" && m.consensusEligible) ||
+    m.availabilityStatus === "verified_pagasa" ||
+    m.availabilityStatus === "static_extract"
+  )
   .map((m) => ({
     id: m.requestedModelId,
     apiId: m.requestedModelId,
@@ -554,26 +607,27 @@ export const IMPLEMENTED_MODELS = MODEL_REGISTRY
     aliasGroup: m.aliasGroup,
     license: m.license,
     consensusEligible: m.consensusEligible,
+    consensusWeight: m.consensusWeight || 1.0,
     exclusionReason: m.exclusionReason,
-    source: m.availabilityStatus === "static_extract" ? "aiwp_static_extract" : "open-meteo",
+    source: m.source || "open-meteo",
     evidence: m.evidence,
   }));
 
 // MODEL_API_IDS is the list sent to the Open-Meteo multi-model API — only
-// Open-Meteo-sourced feeds, not the AIWP static extracts.
-export const MODEL_API_IDS = IMPLEMENTED_MODELS
-  .filter((m) => m.source === "open-meteo")
-  .map((m) => m.apiId);
+// Open-Meteo-sourced feeds, not the AIWP static extracts or PAGASA scrape.
+export const MODEL_API_IDS = MODEL_REGISTRY
+  .filter((m) => (m.source || "open-meteo") === "open-meteo" && m.consensusEligible && m.availabilityStatus === "verified")
+  .map((m) => m.requestedModelId);
 
 // Legacy alias: MODELS is used throughout the older v0.1 pipeline code.
 export const MODELS = IMPLEMENTED_MODELS;
 
 // Models that are NOT currently usable (failed verification / no free feed
-// / licence incompatible / etc). `static_extract` entries (AIWP) are
-// reported in IMPLEMENTED_MODELS with source="aiwp_static_extract" rather
-// than in UNAVAILABLE_MODELS, because they ARE served.
+// / licence incompatible / etc). `static_extract` (AIWP) and `verified_pagasa`
+// (PAGASA provincial scrape) are reported as IMPLEMENTED rather than
+// unavailable, because they ARE served.
 export const UNAVAILABLE_MODELS = MODEL_REGISTRY
-  .filter((m) => m.availabilityStatus !== "verified" && m.availabilityStatus !== "static_extract")
+  .filter((m) => m.availabilityStatus !== "verified" && m.availabilityStatus !== "static_extract" && m.availabilityStatus !== "verified_pagasa")
   .map((m) => ({
     label: m.targetLabel,
     reason: `${m.availabilityStatus}: ${m.exclusionReason || ""}`,

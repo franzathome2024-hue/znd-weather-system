@@ -16,8 +16,10 @@ test("quartiles — small arrays", () => {
   assert.equal(quartiles([7]).q3, 7);
 });
 
-test("aggregateDaily — median consensus across multiple models, drops nulls", () => {
+test("aggregateDaily — robust weighted-mean consensus across multiple models, drops nulls", () => {
   const dates = ["2026-01-01", "2026-01-02"];
+  // Unknown model IDs get weight 1.0 (default). 3 models, no aliases -> weighted
+  // mean = plain mean = median on symmetric set.
   const series = [
     { modelId: "A", values: [30, 28] },
     { modelId: "B", values: [32, 26] },
@@ -26,33 +28,41 @@ test("aggregateDaily — median consensus across multiple models, drops nulls", 
   ];
   const out = aggregateDaily(series, dates);
   assert.equal(out.length, 2);
-  // Day 1: values [30,32,34] -> median 32, min 30, max 34, n=3
+  // Day 1: 3 equal-weight points [30,32,34] -> wm=32, min=30, max=34, n=3
   assert.equal(out[0].n, 3);
   assert.equal(out[0].consensus, 32);
   assert.equal(out[0].min, 30);
   assert.equal(out[0].max, 34);
-  // Day 2: values [28,26] (C null, D null) -> median 27, n=2
+  assert.equal(out[0].consensusMethod, "weighted_mean");
+  // Day 2: values [28,26] (C null, D null) -> n<3, falls back to median=27
   assert.equal(out[1].n, 2);
   assert.equal(out[1].consensus, 27);
   assert.equal(out[1].qc_status, "few_models");
+  assert.equal(out[1].consensusMethod, "median");
 });
 
 test("aggregateDaily — deduplicates identical series (avoid double-counting aliases)", () => {
   const dates = ["2026-01-01"];
+  // gfs_seamless weight=1.0, gfs013 weight=1.0 (alias), ecmwf_ifs weight=1.5.
+  // After dedup: gfs013 dropped. Weighted mean = (1*30 + 1.5*32)/(1+1.5) = (30+48)/2.5 = 31.2
   const series = [
     { modelId: "gfs_seamless", values: [30] },
     { modelId: "gfs013",      values: [30] }, // identical -> deduped
     { modelId: "ecmwf_ifs",   values: [32] },
   ];
   const out = aggregateDaily(series, dates);
-  assert.equal(out[0].n, 2, "gfs013 should be deduped against gfs_seamless");
+  assert.equal(out[0].n_raw, 2, "gfs013 should be deduped against gfs_seamless; n_raw=2 contributors");
+  // With only 2 surviving contributors (gfs_seamless @ w=1.0, ecmwf_ifs @ w=1.5),
+  // we fall back to MEDIAN (n < MIN_FOR_WEIGHTED=3) -> median of [30,32] = 31.
+  assert.equal(out[0].n, 2);
+  assert.equal(out[0].consensusMethod, "median");
   assert.equal(out[0].consensus, 31);
 });
 
-test("buildLocationForecast — full day record shape and median hi/lo can come from different models", () => {
+test("buildLocationForecast — full day record shape: unknown models fall back to median with equal weights", () => {
   const dates = ["2026-01-01", "2026-01-02"];
-  // Model 1 warm days: hi=33 lo=27 ; Model 2 cool days: hi=29 lo=23
-  // -> median hi=31, median lo=25
+  // Unknown models get default weight 1.0; 2 equal-weight contributors -> falls
+  // back to median (n<MIN_FOR_WEIGHTED when only 2 points).
   const perModel = [
     { modelId: "WARM", tmax: [33, 31], tmin: [27, 26] },
     { modelId: "COOL", tmax: [29, 28], tmin: [23, 22] },

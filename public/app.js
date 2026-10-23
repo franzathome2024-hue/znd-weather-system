@@ -579,9 +579,11 @@ function renderLocDetail() {
   }
   const hi = d.tmax.consensus, lo = d.tmin.consensus;
   const nHi = d.tmax.n, nLo = d.tmin.n;
+  const methodHi = d.tmax.consensusMethod === "weighted_mean" ? "weighted" : "median";
+  const methodLo = d.tmin.consensusMethod === "weighted_mean" ? "weighted" : "median";
   el.innerHTML = `
     <h3>${loc.name}${loc.type === "city" ? " ⋆" : ""}</h3>
-    <div class="subline">${d.date} · independent contributors ${nLo} lo / ${nHi} hi · spread ±${d.spread_c!=null?d.spread_c.toFixed(1):"—"}°C</div>
+    <div class="subline">${d.date} · ${nLo} lo (${methodLo}) / ${nHi} hi (${methodHi}) · spread ±${d.spread_c!=null?d.spread_c.toFixed(1):"—"}°C</div>
     <div class="big-temps">
       <div><span class="lbl">Low (n=${nLo})</span><span class="t lo">${lo!=null?lo.toFixed(1):"—"}°</span></div>
       <div><span class="lbl">High (n=${nHi})</span><span class="t hi">${hi!=null?hi.toFixed(1):"—"}°</span></div>
@@ -596,11 +598,13 @@ function renderLocDetail() {
     const droppedHi = d.dropped_duplicates?.some((x) => x.modelId === m.id && x.date === d.date);
     const nonConsensus = m.consensusEligible === false;
     const isAiwp = m.source === "aiwp_static_extract";
+    const isPagasa = m.source === "pagasa";
     const tr = document.createElement("tr");
     if (droppedHi) tr.classList.add("deduped");
     if (nonConsensus) tr.classList.add("non-consensus");
     const badge = droppedHi ? '<span class="muted small">(alias)</span>'
-                : isAiwp ? '<span class="badge aiwp" title="Pre-processed extract from NOAA/CIRA AIWP public S3 (Pangu/GraphCast IFS). Non-commercial weights; not included in consensus median.">AI ref · non-commercial</span>'
+                : isPagasa ? '<span class="badge pagasa" title="PAGASA-DOST provincial forecast (public domain). Weighted highest in consensus since it is the Philippine official guidance, province-wide.">PAGASA · official</span>'
+                : isAiwp ? '<span class="badge aiwp" title="Pre-processed extract from NOAA/CIRA AIWP public S3 (Pangu/GraphCast IFS). Non-commercial weights; not included in consensus.">AI ref · non-commercial</span>'
                 : nonConsensus ? '<span class="muted small">(excluded)</span>'
                 : "";
     tr.innerHTML = `<td>${m.shortLabel}${badge?' '+badge:''}</td>

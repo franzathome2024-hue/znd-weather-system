@@ -9,6 +9,7 @@
 import { LOCATIONS } from "./locations.js";
 import { IMPLEMENTED_MODELS, MODEL_REGISTRY } from "./models.js";
 import { fetchOpenMeteo, parseOpenMeteoResponse } from "./providers/open-meteo.js";
+import { fetchPagasaZn, pagasaPerModelTraces } from "./providers/pagasa.js";
 import { buildLocationForecast } from "./aggregation/aggregate.js";
 
 const CACHE_VERSION = "znd-forecast-v0.2";
@@ -38,8 +39,11 @@ export function isValidLocBundle(loc) {
 
 /**
  * Fetch one location and return either a usable bundle or a structured failure.
+ * @param {Object} loc
+ * @param {Object} opts
+ * @param {Array<Object>} opts.pagasaPerModel - PAGASA perModel entries (province-wide, applied to all ZN LGUs)
  */
-async function fetchOne(loc, { days, baseUrl, fetchFn, timeoutMs, maxRetries }) {
+async function fetchOne(loc, { days, baseUrl, fetchFn, timeoutMs, maxRetries, pagasaPerModel = [] }) {
   const started = Date.now();
   const res = await fetchOpenMeteo({
     lat: loc.lat, lon: loc.lon, days, baseUrl, fetchFn,
@@ -57,8 +61,22 @@ async function fetchOne(loc, { days, baseUrl, fetchFn, timeoutMs, maxRetries }) 
   if (!parsed.dates || parsed.dates.length === 0) {
     return { ok: false, locationId: loc.id, error: "empty date axis in response", retries: res.retries, latencyMs: Date.now() - started };
   }
+  // Append PAGASA perModel traces (province-wide) to the Open-Meteo list so
+  // aggregation picks them up alongside all other contributors.
+  const combinedPerModel = [...parsed.perModel];
+  for (const pm of pagasaPerModel) {
+    // Align to the date axis returned by Open-Meteo
+    const aligned = { modelId: pm.modelId, runInit: pm.runInit, status: pm.status, tmax: [], tmin: [] };
+    const pagasaDates = (pm._dates || null);
+    for (const d of parsed.dates) {
+      const idx = pagasaDates ? pagasaDates.indexOf(d) : -1;
+      aligned.tmax.push(idx >= 0 ? pm.tmax[idx] : null);
+      aligned.tmin.push(idx >= 0 ? pm.tmin[idx] : null);
+    }
+    combinedPerModel.push(aligned);
+  }
   const bundle = buildLocationForecast({
-    locationId: loc.id, perModel: parsed.perModel, dates: parsed.dates,
+    locationId: loc.id, perModel: combinedPerModel, dates: parsed.dates,
     retrievedAt: new Date().toISOString(),
   });
   bundle.fetchMeta = { latencyMs: Date.now() - started, retries: res.retries };
@@ -155,9 +173,25 @@ export async function runPipeline({ fetchFn, store, days = 7, baseUrl, force = f
   const results = [];
   let totalLatency = 0;
 
+  // Fetch PAGASA provincial outlook ONCE for the whole province. Failures are
+  // non-fatal: pagasaPerModel stays [] and aggregation ignores it.
+  const pagasa = await fetchPagasaZn({ fetchFn, store });
+  let pagasaPerModel = [];
+  let pagasaMeta = { ok: pagasa.ok, issuedAt: pagasa.issuedAt || null, provinceName: pagasa.provinceName || null, error: pagasa.error || null, source: pagasa.source || null };
+  if (pagasa.ok && Array.isArray(pagasa.days)) {
+    // We need the date axis BEFORE Open-Meteo fetches — use an Asia/Manila date
+    // axis aligned to the requested forecast length, starting today. PAGASA
+    // dates are PHT calendar dates; the first entry is "today" PHT.
+    const pagasaDates = pagasa.days.map((d) => d.date);
+    const pt = pagasaPerModelTraces(pagasa, pagasaDates);
+    if (pt.available) {
+      pagasaPerModel = pt.perModel.map((pm) => ({ ...pm, _dates: pagasaDates }));
+    }
+  }
+
   for (let i = 0; i < LOCATIONS.length; i++) {
     const loc = LOCATIONS[i];
-    const fr = await fetchOne(loc, { days, baseUrl, fetchFn, timeoutMs, maxRetries });
+    const fr = await fetchOne(loc, { days, baseUrl, fetchFn, timeoutMs, maxRetries, pagasaPerModel });
     if (fr.ok) {
       results.push(fr.bundle);
       totalLatency += fr.bundle.fetchMeta?.latencyMs || 0;
@@ -190,6 +224,8 @@ export async function runPipeline({ fetchFn, store, days = 7, baseUrl, force = f
       failedLocations: results.filter((r) => r.error).length,
       totalLatencyMs: totalLatency,
       errors: results.filter((r) => r.error).map((r) => ({ locationId: r.locationId, error: r.error })),
+      pagasa: pagasaMeta,
+      consensusMethod: "robust_weighted_mean (MAD outlier trim @2.5σ; median fallback when n<3)",
     },
     fromCache: false,
   };
