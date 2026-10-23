@@ -197,7 +197,7 @@ async function getForecast(env, ctx, { force = false, days = 7, assetBase = null
   return await refreshForecast(env, { reason: force ? "force" : "cold", days, assetBase });
 }
 
-async function acquireLock(env) {
+async function acquireLock(env, { assetBase = null } = {}) {
   const store = env.FORECAST_CACHE;
   // Always acquire the in-memory lock (single-isolate dedup).
   if (inMemoryRefreshRunning) return { acquired: false, promise: inMemoryRefreshRunning, inMemory: true };
@@ -205,7 +205,7 @@ async function acquireLock(env) {
   if (store && store.put) {
     try {
       // KV put-if-not-exists isn't directly available; we use a short TTL and
-      // tolerate a tiny race window — Worker isolates usually serialize cron.
+      // tolerate a tiny race window - Worker isolates usually serialize cron.
       // We write a lock value that contains our random nonce + timestamp.
       const existing = await store.get(REFRESH_LOCK_KEY).catch(() => null);
       if (existing) {
@@ -219,7 +219,6 @@ async function acquireLock(env) {
       kvAcquired = true;
     } catch (_) { kvAcquired = false; }
   }
-  const assetBase = _opts?.assetBase || null;
   const promise = (async () => {
     try {
       const bundle = await runPipeline({
@@ -263,7 +262,7 @@ async function refreshForecast(env, _opts = {}) {
     } catch (e) { b.aiwp = { available: false, stale: true, error: String(e?.message || e), models: [], fetchedAt: null }; }
     return b;
   };
-  const lock = await acquireLock(env);
+  const lock = await acquireLock(env, { assetBase });
   if (!lock.acquired && lock.promise) {
     try { return await lock.promise; }
     catch (e) {
