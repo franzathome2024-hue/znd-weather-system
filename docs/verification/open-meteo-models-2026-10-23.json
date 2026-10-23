@@ -1,0 +1,1036 @@
+{
+  "verificationPoint": {
+    "name": "Dipolog City",
+    "lat": 8.5872,
+    "lon": 123.3408
+  },
+  "endpoint": "https://api.open-meteo.com/v1/forecast",
+  "verifiedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+  "verifiedAtPst": "2026-10-23T10:11:01.817256+00:00",
+  "candidatesTested": 27,
+  "results": [
+    {
+      "modelId": "ecmwf_ifs",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "ecmwf_ifs"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          30.1,
+          28.2,
+          29.9
+        ],
+        "tminFirst3": [
+          24.9,
+          24.5,
+          23.9
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.541301,
+        "longitude_used": 123.3534,
+        "elevation": 7.0,
+        "generationtime_ms": 0.03898143768310547,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "ecmwf_ifs025",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "ecmwf_ifs025"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          30.2,
+          27.7,
+          28.8
+        ],
+        "tminFirst3": [
+          25.7,
+          25.4,
+          25.6
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.5,
+        "longitude_used": 123.25,
+        "elevation": 7.0,
+        "generationtime_ms": 0.03814697265625,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "ecmwf_aifs025_single",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "ecmwf_aifs025_single"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          29.0,
+          28.2,
+          28.3
+        ],
+        "tminFirst3": [
+          27.1,
+          26.3,
+          26.2
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.5,
+        "longitude_used": 123.25,
+        "elevation": 7.0,
+        "generationtime_ms": 0.7824897766113281,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "icon_global",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "icon_global"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          34.1,
+          33.4,
+          31.8
+        ],
+        "tminFirst3": [
+          25.1,
+          24.4,
+          24.6
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.5,
+        "longitude_used": 123.375,
+        "elevation": 7.0,
+        "generationtime_ms": 0.0324249267578125,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "icon_seamless",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "icon_seamless"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          34.1,
+          33.4,
+          31.8
+        ],
+        "tminFirst3": [
+          25.1,
+          24.4,
+          24.6
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.5,
+        "longitude_used": 123.375,
+        "elevation": 7.0,
+        "generationtime_ms": 0.045418739318847656,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "dwd_icon",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "dwd_icon"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          34.1,
+          33.4,
+          31.8
+        ],
+        "tminFirst3": [
+          25.1,
+          24.4,
+          24.6
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.5,
+        "longitude_used": 123.375,
+        "elevation": 7.0,
+        "generationtime_ms": 0.043272972106933594,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "gfs_seamless",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "gfs_seamless"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          31.9,
+          26.0,
+          31.4
+        ],
+        "tminFirst3": [
+          24.8,
+          23.9,
+          23.3
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.493332,
+        "longitude_used": 123.28125,
+        "elevation": 7.0,
+        "generationtime_ms": 0.050187110900878906,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "gfs013",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "gfs013"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          31.9,
+          26.0,
+          31.4
+        ],
+        "tminFirst3": [
+          24.8,
+          23.9,
+          23.3
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.493332,
+        "longitude_used": 123.28125,
+        "elevation": 7.0,
+        "generationtime_ms": 0.033974647521972656,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "gfs025",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "gfs025"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          null,
+          null,
+          null
+        ],
+        "tminFirst3": [
+          null,
+          null,
+          null
+        ],
+        "tmaxAllNull": true,
+        "tminAllNull": true,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.5,
+        "longitude_used": 123.25,
+        "elevation": 7.0,
+        "generationtime_ms": 0.020503997802734375,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": false,
+      "usableTmin": false
+    },
+    {
+      "modelId": "ncep_aigfs025",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "ncep_aigfs025"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          30.0,
+          27.3,
+          29.1
+        ],
+        "tminFirst3": [
+          24.3,
+          23.7,
+          23.7
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.5,
+        "longitude_used": 123.25,
+        "elevation": 7.0,
+        "generationtime_ms": 0.04470348358154297,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "ukmo_seamless",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "ukmo_seamless"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          32.3,
+          32.1,
+          30.4
+        ],
+        "tminFirst3": [
+          24.8,
+          25.2,
+          24.7
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.53125,
+        "longitude_used": 123.328125,
+        "elevation": 7.0,
+        "generationtime_ms": 1.1081695556640625,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "arpege_world",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "arpege_world"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          34.3,
+          32.6,
+          29.5
+        ],
+        "tminFirst3": [
+          27.7,
+          27.1,
+          27.0
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.5,
+        "longitude_used": 123.25,
+        "elevation": 7.0,
+        "generationtime_ms": 0.062465667724609375,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "gem_global",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "gem_global"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          32.5,
+          30.1,
+          30.4
+        ],
+        "tminFirst3": [
+          25.5,
+          24.6,
+          24.7
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.550003,
+        "longitude_used": 123.45001,
+        "elevation": 7.0,
+        "generationtime_ms": 0.0438690185546875,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "bom_access_global",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "bom_access_global"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          null,
+          null,
+          null
+        ],
+        "tminFirst3": [
+          null,
+          null,
+          null
+        ],
+        "tmaxAllNull": true,
+        "tminAllNull": true,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.496094,
+        "longitude_used": 123.31055,
+        "elevation": 7.0,
+        "generationtime_ms": 0.03230571746826172,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": false,
+      "usableTmin": false
+    },
+    {
+      "modelId": "jma_gsm",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "jma_gsm"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          29.9,
+          29.6,
+          28.7
+        ],
+        "tminFirst3": [
+          25.2,
+          25.2,
+          25.0
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.5,
+        "longitude_used": 123.5,
+        "elevation": 7.0,
+        "generationtime_ms": 0.034928321838378906,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "aicon",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "aicon"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value aicon"
+    },
+    {
+      "modelId": "aicon_global",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "aicon_global"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value aicon_global"
+    },
+    {
+      "modelId": "dwd_aicon",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "dwd_aicon"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value dwd_aicon"
+    },
+    {
+      "modelId": "icon_ai",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "icon_ai"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value icon_ai"
+    },
+    {
+      "modelId": "aifs_seamless",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "aifs_seamless"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value aifs_seamless"
+    },
+    {
+      "modelId": "aifs025",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "aifs025"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value aifs025"
+    },
+    {
+      "modelId": "ecmwf_ifs04",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "ecmwf_ifs04"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          null,
+          null,
+          null
+        ],
+        "tminFirst3": [
+          null,
+          null,
+          null
+        ],
+        "tmaxAllNull": true,
+        "tminAllNull": true,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.400002,
+        "longitude_used": 123.20001,
+        "elevation": 7.0,
+        "generationtime_ms": 0.030517578125,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": false,
+      "usableTmin": false
+    },
+    {
+      "modelId": "knmi_seamless",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "knmi_seamless"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 200,
+      "response": {
+        "dates": [
+          "2026-10-23",
+          "2026-10-24",
+          "2026-10-25"
+        ],
+        "tmaxFirst3": [
+          30.1,
+          28.2,
+          29.9
+        ],
+        "tminFirst3": [
+          24.9,
+          24.5,
+          23.9
+        ],
+        "tmaxAllNull": false,
+        "tminAllNull": false,
+        "variablesReturned": [
+          "time",
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "latitude_used": 8.541301,
+        "longitude_used": 123.3534,
+        "elevation": 7.0,
+        "generationtime_ms": 0.031232833862304688,
+        "timezone": "Asia/Manila"
+      },
+      "usableTmax": true,
+      "usableTmin": true
+    },
+    {
+      "modelId": "meteo_norway_seamless",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "meteo_norway_seamless"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value meteo_norway_seamless"
+    },
+    {
+      "modelId": "ecmwf_ifs09",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "ecmwf_ifs09"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value ecmwf_ifs09"
+    },
+    {
+      "modelId": "ukmo_global10",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "ukmo_global10"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value ukmo_global10"
+    },
+    {
+      "modelId": "access_global12",
+      "request": {
+        "endpoint": "https://api.open-meteo.com/v1/forecast",
+        "latitude": 8.5872,
+        "longitude": 123.3408,
+        "variables": [
+          "temperature_2m_max",
+          "temperature_2m_min"
+        ],
+        "timezone": "Asia/Manila",
+        "forecast_days": 3,
+        "requestedModelId": "access_global12"
+      },
+      "requestedAtUtc": "2026-10-23T02:11:01.817256+00:00",
+      "requestedAtPst": "2026-10-23T10:11:01.817256+00:00",
+      "httpStatus": 400,
+      "apiError": "Invalid value: Cannot initialize MultiDomains from invalid String value access_global12"
+    }
+  ]
+}

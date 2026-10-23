@@ -10,7 +10,8 @@
 // any station's branding, intros, or proprietary catchphrases).
 
 import { LOCATIONS, LOCATION_BY_ID } from "../locations.js";
-import { MODELS } from "../models.js";
+import { IMPLEMENTED_MODELS, MODEL_REGISTRY } from "../models.js";
+const MODELS = IMPLEMENTED_MODELS;
 
 const WEEKDAY_CEB = {
   0: "Domingo", 1: "Lunes", 2: "Martes", 3: "Miyerkules",

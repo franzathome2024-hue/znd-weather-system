@@ -1,18 +1,20 @@
-// Frontend JS for ZND Weather v0.1 — zero-build, vanilla ES2020.
-// No framework; Leaflet is loaded from CDN in the HTML.
+// ZND Weather v0.1 frontend — MapLibre GL JS, vanilla ES2020, no build step.
+// Uses locally hosted GADM 4.1 municipal-boundary GeoJSON for choropleth
+// rendering; OSM raster tiles for basemap. Mapbox is not used; no Mapbox
+// tokens required.
 
 const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 const state = {
   bundle: null,
   locations: null,
   models: null,
+  geo: null,
   selectedLocId: "dipolog",
   selectedDateIdx: 0,
-  variable: "tmax", // 'tmax' | 'tmin'
+  variable: "tmax", // 'tmax' | 'tmin' | 'agreement'
   map: null,
-  markerLayer: null,
+  hoverLocId: null,
 };
 
 init().catch((e) => {
@@ -22,31 +24,17 @@ init().catch((e) => {
 
 async function init() {
   bindUi();
-  await Promise.all([loadMeta(), loadForecast()]);
+  await Promise.all([loadMeta(), loadGeo(), loadForecast()]);
   initMap();
   render();
 }
 
 function bindUi() {
-  $("#varSelect").addEventListener("change", (e) => {
-    state.variable = e.target.value;
-    renderMap();
-    renderLegend();
-  });
-  $("#dateSelect").addEventListener("change", (e) => {
-    state.selectedDateIdx = parseInt(e.target.value, 10);
-    render();
-  });
-  $("#locSearch").addEventListener("input", (e) => {
-    renderLocList(e.target.value);
-  });
+  $("#varSelect").addEventListener("change", (e) => { state.variable = e.target.value; renderMap(); renderLegend(); });
+  $("#dateSelect").addEventListener("change", (e) => { state.selectedDateIdx = parseInt(e.target.value, 10); render(); });
+  $("#locSearch").addEventListener("input", (e) => renderLocList(e.target.value));
   $("#btnRefresh").addEventListener("click", () => loadForecast(true));
-  $("#btnBulletin").addEventListener("click", async () => {
-    const day = state.selectedDateIdx;
-    const r = await fetch(`/api/bulletin?day=${day}`);
-    const text = await r.text();
-    $("#bulletinText").textContent = text;
-  });
+  $("#btnBulletin").addEventListener("click", renderBulletin);
 }
 
 async function loadMeta() {
@@ -58,15 +46,23 @@ async function loadMeta() {
   state.models = modelRes;
 }
 
+async function loadGeo() {
+  try {
+    const r = await fetch("/data/zamboanga_del_norte_municipalities.geojson");
+    if (r.ok) state.geo = await r.json();
+  } catch (e) {
+    state.geo = null;
+    console.warn("Municipal boundaries unavailable:", e.message);
+  }
+}
+
 async function loadForecast(force = false) {
   const url = force ? "/api/forecast/raw" : "/api/forecast";
-  const res = await fetch(url + "?days=7");
-  state.bundle = await res.json();
+  state.bundle = await fetch(url + "?days=7").then((r) => r.json());
   populateDates();
 }
 
 function populateDates() {
-  // Find a location with dates
   const sample = (state.bundle.locations || []).find((l) => l.dates && l.dates.length);
   const dates = sample ? sample.dates : [];
   const sel = $("#dateSelect");
@@ -75,7 +71,7 @@ function populateDates() {
     const opt = document.createElement("option");
     opt.value = String(i);
     const dt = new Date(d + "T00:00:00+08:00");
-    const label = i === 0 ? `${d} (today)` : i === 1 ? `${d} (ugma)` : d;
+    const label = i === 0 ? `${d} (karon)` : i === 1 ? `${d} (ugma)` : d;
     opt.textContent = label;
     sel.appendChild(opt);
   });
@@ -85,14 +81,115 @@ function populateDates() {
 
 function initMap() {
   if (state.map) return;
-  const map = L.map("map", { zoomControl: true, attributionControl: true }).setView([8.15, 122.9], 9);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 13,
-    minZoom: 8,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map);
+  const map = new maplibregl.Map({
+    container: "map",
+    style: {
+      version: 8,
+      sources: {
+        osm: {
+          type: "raster",
+          tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        },
+      },
+      layers: [
+        { id: "osm", type: "raster", source: "osm" },
+      ],
+    },
+    center: [122.85, 8.1],
+    zoom: 8,
+    minZoom: 7,
+    maxZoom: 12,
+    attributionControl: true,
+  });
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "top-right");
   state.map = map;
-  state.markerLayer = L.layerGroup().addTo(map);
+
+  map.on("load", () => {
+    if (state.geo) {
+      map.addSource("municipalities", { type: "geojson", data: state.geo, generateId: false });
+      map.addLayer({
+        id: "muni-fill",
+        type: "fill",
+        source: "municipalities",
+        paint: {
+          "fill-color": ["get", "fillColor"],
+          "fill-opacity": [
+            "case",
+            ["boolean", ["feature-state", "hover"], false], 0.85,
+            0.7,
+          ],
+          "fill-outline-color": "#000000",
+        },
+      });
+      map.addLayer({
+        id: "muni-line",
+        type: "line",
+        source: "municipalities",
+        paint: { "line-color": "#000", "line-width": 0.75, "line-opacity": 0.6 },
+      });
+      // Labels (simple text labels at centroid — built client-side)
+      map.on("click", "muni-fill", (e) => {
+        const fid = e.features?.[0]?.properties?.id;
+        if (fid) { state.selectedLocId = fid; render(); }
+      });
+      map.on("mousemove", "muni-fill", (e) => {
+        const fid = e.features?.[0]?.properties?.id;
+        if (fid && fid !== state.hoverLocId) {
+          if (state.hoverLocId) map.setFeatureState(
+            { source: "municipalities", id: featureIdByLoc(state.hoverLocId) },
+            { hover: false }
+          );
+          state.hoverLocId = fid;
+          map.setFeatureState(
+            { source: "municipalities", id: featureIdByLoc(fid) },
+            { hover: true }
+          );
+          map.getCanvas().style.cursor = "pointer";
+          const loc = state.locations.find(l=>l.id===fid);
+          const d = getLocationDay(fid, state.selectedDateIdx);
+          if (loc && d) {
+            const hi = d.tmax?.consensus; const lo = d.tmin?.consensus;
+            showPopup(loc, hi, lo, e.lngLat);
+          }
+        }
+      });
+      map.on("mouseleave", "muni-fill", () => {
+        if (state.hoverLocId) {
+          map.setFeatureState(
+            { source: "municipalities", id: featureIdByLoc(state.hoverLocId) },
+            { hover: false }
+          );
+        }
+        state.hoverLocId = null;
+        map.getCanvas().style.cursor = "";
+        if (state.popup) { state.popup.remove(); state.popup = null; }
+      });
+    }
+    // Always render point markers even without polygons
+    renderMap();
+  });
+}
+
+let _featureIndex = null;
+function featureIdByLoc(locId) {
+  if (!_featureIndex && state.geo) {
+    _featureIndex = {};
+    state.geo.features.forEach((f, i) => { _featureIndex[f.properties.id] = i; });
+  }
+  return _featureIndex ? _featureIndex[locId] : null;
+}
+
+function showPopup(loc, hi, lo, lngLat) {
+  if (!state.popup) state.popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 10 });
+  const html = `<b>${loc.name}</b><br>L ${lo!=null?lo.toFixed(1):"—"}° · H ${hi!=null?hi.toFixed(1):"—"}°<br><span style="font-size:10px;color:#999">${dFor(loc)||""}</span>`;
+  state.popup.setLngLat(lngLat).setHTML(html).addTo(state.map);
+}
+
+function dFor(locId) {
+  const d = getLocationDay(locId, state.selectedDateIdx);
+  return d ? d.date : "";
 }
 
 function render() {
@@ -105,30 +202,45 @@ function render() {
   renderLegend();
   renderWarnings();
   renderSources();
-  renderBulletin(); // fetch live bulletin text
+  renderFeedCounts();
+  renderBulletin();
 }
 
 function renderMeta() {
   const b = state.bundle;
   const updated = b.completedAt || b.startedAt;
   $("#lastUpdate").textContent = `Updated: ${formatPST(updated)}${b.fromCache ? " (cached" + (b.stale ? ", STALE" : "") + ")" : ""}`;
+  // Count eligible/verified models from bundle
   const nModels = (b.models || []).length;
   const ok = b.summary?.successfulLocations ?? 0;
-  $("#modelCount").textContent = `${nModels} models · ${ok}/27 locations OK`;
+  $("#modelCount").textContent = `${nModels} eligible models · ${ok}/27 OK`;
+}
+
+function renderFeedCounts() {
+  const m = state.models || {};
+  const fc = m.feedCounts || {};
+  const di = state.selectedDateIdx;
+  // Count average independent contributors for today
+  let avgN = 0, tot = 0;
+  for (const l of state.bundle.locations || []) {
+    const d = l.days?.[di];
+    if (d && d.n_contributing) { avgN += d.n_contributing; tot++; }
+  }
+  avgN = tot ? (avgN / tot) : 0;
+  $("#feedCounts").textContent =
+    `Configured feeds: ${fc.configured ?? "?"} · Verified eligible: ${fc.verifiedEligible ?? "?"} · Independent contributors/day: ~${avgN.toFixed(1)} (after alias de-dup)`;
 }
 
 function renderWarnings() {
   const b = state.bundle;
-  const stale = $("#warnStale");
-  stale.classList.toggle("hidden", !b.stale);
+  $("#warnStale").classList.toggle("hidden", !b.stale);
   const errs = $("#warnErrors");
   const failCount = b.summary?.failedLocations ?? 0;
   if (failCount > 0) {
     errs.classList.remove("hidden");
-    errs.textContent = `⚠ ${failCount} location(s) failed to fetch this run. Last good values (if any) are shown where available.`;
+    errs.textContent = `⚠ ${failCount} location(s) failed to fetch this run. Last good values shown where available.`;
   } else {
-    errs.classList.add("hidden");
-    errs.textContent = "";
+    errs.classList.add("hidden"); errs.textContent = "";
   }
 }
 
@@ -137,7 +249,6 @@ function renderLocList(query) {
   ul.innerHTML = "";
   const q = (query || "").trim().toLowerCase();
   const locs = (state.locations || []).filter((l) => !q || l.name.toLowerCase().includes(q));
-  // Sort: cities first, then alphabetical.
   locs.sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "city" ? -1 : 1));
   const di = state.selectedDateIdx;
   for (const l of locs) {
@@ -145,12 +256,9 @@ function renderLocList(query) {
     const hi = d?.tmax?.consensus;
     const lo = d?.tmin?.consensus;
     const li = document.createElement("li");
-    li.className = l.id === state.selectedLocId ? "active" : "";
+    if (l.id === state.selectedLocId) li.classList.add("active");
     li.innerHTML = `<span>${l.name}${l.type === "city" ? " ⋆" : ""}</span><span class="val">${hi != null && lo != null ? `${lo.toFixed(1)}–${hi.toFixed(1)}°C` : "—"}</span>`;
-    li.addEventListener("click", () => {
-      state.selectedLocId = l.id;
-      render();
-    });
+    li.addEventListener("click", () => { state.selectedLocId = l.id; render(); flyTo(l.id); });
     ul.appendChild(li);
   }
 }
@@ -165,15 +273,14 @@ function renderAllTable() {
     const tr = document.createElement("tr");
     if (l.id === state.selectedLocId) tr.classList.add("selected");
     if (!d || d.n_contributing === 0) tr.classList.add("missing");
-    const hi = d?.tmax?.consensus;
-    const lo = d?.tmin?.consensus;
+    const hi = d?.tmax?.consensus, lo = d?.tmin?.consensus;
     tr.innerHTML = `
       <td>${l.name}${l.type === "city" ? " ⋆" : ""}</td>
-      <td class="num">${lo != null ? lo.toFixed(1) : "—"}</td>
-      <td class="num">${hi != null ? hi.toFixed(1) : "—"}</td>
+      <td class="num">${lo != null ? `${lo.toFixed(1)} <span class="muted small">(${d.tmin.n})</span>` : "—"}</td>
+      <td class="num">${hi != null ? `${hi.toFixed(1)} <span class="muted small">(${d.tmax.n})</span>` : "—"}</td>
       <td class="num">${d?.n_contributing ?? 0}</td>
       <td class="num">${d?.spread_c != null ? "±" + d.spread_c.toFixed(1) : "—"}</td>`;
-    tr.addEventListener("click", () => { state.selectedLocId = l.id; render(); });
+    tr.addEventListener("click", () => { state.selectedLocId = l.id; render(); flyTo(l.id); });
     tbody.appendChild(tr);
   }
 }
@@ -186,67 +293,137 @@ function renderLocDetail() {
   if (!loc) { el.innerHTML = ""; return; }
   if (!d || d.n_contributing === 0) {
     el.innerHTML = `<h3>${loc.name}</h3><p class="muted small">Walay datos alang niining petsa.</p>`;
-    $("#modelTable tbody").innerHTML = "";
-    return;
+    $("#modelTable tbody").innerHTML = ""; return;
   }
-  const date = d.date;
-  const hi = d.tmax.consensus;
-  const lo = d.tmin.consensus;
-  const n = d.n_contributing;
-  const spread = d.spread_c;
+  const hi = d.tmax.consensus, lo = d.tmin.consensus;
+  const nHi = d.tmax.n, nLo = d.tmin.n;
   el.innerHTML = `
     <h3>${loc.name}${loc.type === "city" ? " ⋆" : ""}</h3>
-    <div class="subline">${date} · ${n} models · spread ±${spread != null ? spread.toFixed(1) : "—"}°C</div>
+    <div class="subline">${d.date} · independent contributors ${nLo} lo / ${nHi} hi · spread ±${d.spread_c!=null?d.spread_c.toFixed(1):"—"}°C</div>
     <div class="big-temps">
-      <div><span class="lbl">Low</span><span class="t lo">${lo != null ? lo.toFixed(1) : "—"}°</span></div>
-      <div><span class="lbl">High</span><span class="t hi">${hi != null ? hi.toFixed(1) : "—"}°</span></div>
+      <div><span class="lbl">Low (n=${nLo})</span><span class="t lo">${lo!=null?lo.toFixed(1):"—"}°</span></div>
+      <div><span class="lbl">High (n=${nHi})</span><span class="t hi">${hi!=null?hi.toFixed(1):"—"}°</span></div>
     </div>`;
 
-  // Model table
   const tbody = $("#modelTable tbody");
   tbody.innerHTML = "";
-  for (const m of (state.bundle.models || [])) {
+  for (const m of (state.models?.implemented || [])) {
     const tmax = d.tmax.valuesByModel?.[m.id];
     const tmin = d.tmin.valuesByModel?.[m.id];
+    // Mark dropped aliases
+    const droppedHi = d.dropped_duplicates?.some((x) => x.modelId === m.id && x.date === d.date);
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${m.label}</td><td class="num ${tmax==null?'null':''}">${tmax!=null?tmax.toFixed(1):"—"}</td><td class="num ${tmin==null?'null':''}">${tmin!=null?tmin.toFixed(1):"—"}</td>`;
+    if (droppedHi) tr.classList.add("deduped");
+    tr.innerHTML = `<td>${m.shortLabel}${droppedHi?' <span class="muted small">(alias)</span>':''}</td>
+      <td class="num ${tmax==null?'null':''}">${tmax!=null?tmax.toFixed(1):"—"}</td>
+      <td class="num ${tmin==null?'null':''}">${tmin!=null?tmin.toFixed(1):"—"}</td>`;
     tbody.appendChild(tr);
   }
 }
 
 function renderMap() {
-  if (!state.map || !state.markerLayer) return;
-  state.markerLayer.clearLayers();
+  if (!state.map || !state.map.getSource("municipalities")) {
+    // render points if no polygons
+    renderPointMarkers();
+    return;
+  }
   const di = state.selectedDateIdx;
-  const values = [];
-  const markers = [];
+  // Build color lookup
+  const colors = {};
+  const vals = [];
   for (const l of state.locations || []) {
     const d = getLocationDay(l.id, di);
-    const v = state.variable === "tmax" ? d?.tmax?.consensus : d?.tmin?.consensus;
-    if (typeof v === "number") { values.push(v); }
-    markers.push({ l, d, v });
+    let v;
+    if (state.variable === "tmax") v = d?.tmax?.consensus;
+    else if (state.variable === "tmin") v = d?.tmin?.consensus;
+    else v = d?.spread_c;
+    if (typeof v === "number") vals.push(v);
+    colors[l.id] = v;
   }
-  const [lo, hi] = values.length ? [Math.min(...values), Math.max(...values)] : [22, 35];
-  for (const { l, d, v } of markers) {
-    const color = tempColor(v, lo, hi);
-    const other = state.variable === "tmax" ? d?.tmin?.consensus : d?.tmax?.consensus;
-    const vLbl = v == null ? "—" : v.toFixed(1);
-    const oLbl = other == null ? "—" : other.toFixed(1);
-    const html = `<div class="temp-marker" style="border-color:${color}">
-      <b>${l.name}</b><br>
-      <span class="lo">L ${oLbl}°</span> · <span class="hi">H ${vLbl}°</span>
-    </div>`;
-    const icon = L.divIcon({ className: "", html, iconSize: null, iconAnchor: [0, 0] });
-    const m = L.marker([l.lat, l.lon], { icon });
-    m.bindPopup(`<b>${l.name}</b><br>${d?.date ?? ""}<br>Low ${other!=null?other.toFixed(1):"—"}° / High ${v!=null?v.toFixed(1):"—"}°<br>${d?.n_contributing ?? 0} models`);
-    m.on("click", () => { state.selectedLocId = l.id; renderLocDetail(); renderAllTable(); renderLocList($("#locSearch").value); });
-    m.addTo(state.markerLayer);
+  const lo = vals.length ? Math.min(...vals) : 22;
+  const hi = vals.length ? Math.max(...vals) : 34;
+
+  // Update GeoJSON features with fill color
+  const data = JSON.parse(JSON.stringify(state.geo));
+  for (const f of data.features) {
+    const v = colors[f.properties.id];
+    f.properties.fillColor = v == null ? "#444" : tempColor(v, lo, hi, state.variable === "agreement");
+    f.properties.value = v;
   }
-  // Fit to province bounds when first render
-  if (!state._fitOnce) {
-    state.map.fitBounds([[7.2, 122.0],[8.8,123.7]], { padding: [20,20] });
-    state._fitOnce = true;
+  state.map.getSource("municipalities").setData(data);
+
+  // Highlight selected
+  for (const l of state.locations || []) {
+    const fid = featureIdByLoc(l.id);
+    if (fid == null) continue;
+    state.map.setFeatureState({ source: "municipalities", id: fid }, { selected: l.id === state.selectedLocId });
   }
+  state.map.setFilter("muni-line", null);
+  // Add a thick outline for selected
+  if (!state.map.getLayer("selected-line")) {
+    state.map.addLayer({
+      id: "selected-line", type: "line", source: "municipalities",
+      paint: { "line-color": "#ffd54f", "line-width": 2.5 },
+      filter: ["==", ["get", "id"], state.selectedLocId],
+    }, "muni-line");
+  } else {
+    state.map.setFilter("selected-line", ["==", ["get", "id"], state.selectedLocId]);
+  }
+  renderPointCenters();
+  renderAttribution();
+}
+
+function renderPointCenters() {
+  // Add / update a label layer with small centroid numbers
+  const di = state.selectedDateIdx;
+  const feats = [];
+  for (const l of state.locations || []) {
+    const d = getLocationDay(l.id, di);
+    if (!d) continue;
+    const v = state.variable === "tmax" ? d.tmax.consensus : state.variable === "tmin" ? d.tmin.consensus : d.spread_c;
+    if (v == null) continue;
+    feats.push({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [l.lon, l.lat] },
+      properties: { label: state.variable === "agreement" ? "±" + v.toFixed(0) : v.toFixed(0) },
+    });
+  }
+  const src = state.map.getSource("centers");
+  const data = { type: "FeatureCollection", features: feats };
+  if (src) src.setData(data);
+  else {
+    state.map.addSource("centers", { type: "geojson", data });
+    state.map.addLayer({
+      id: "centers-sym", type: "symbol", source: "centers",
+      layout: { "text-field": ["get", "label"], "text-size": 10, "text-font": ["literal", ["Arial Unicode MS Bold"]] },
+      paint: { "text-color": "#fff", "text-halo-color": "#000", "text-halo-width": 1.2 },
+    }, "selected-line");
+  }
+}
+
+// No-polygon fallback
+function renderPointMarkers() {
+  if (!state.map) return;
+  // simple circles
+  if (!state.map.getSource("points")) {
+    const feats = [];
+    const di = state.selectedDateIdx;
+    for (const l of state.locations || []) {
+      feats.push({ type: "Feature", geometry: { type: "Point", coordinates: [l.lon, l.lat] }, properties: { id: l.id } });
+    }
+    state.map.addSource("points", { type: "geojson", data: { type: "FeatureCollection", features: feats } });
+    state.map.addLayer({
+      id: "points-circles", type: "circle", source: "points",
+      paint: { "circle-radius": 6, "circle-color": "#4fc3f7", "circle-stroke-color": "#000", "circle-stroke-width": 1 },
+    });
+  }
+}
+
+function flyTo(locId) {
+  if (!state.map) return;
+  const l = state.locations.find((x) => x.id === locId);
+  if (!l) return;
+  state.map.flyTo({ center: [l.lon, l.lat], zoom: 10, duration: 400 });
 }
 
 function renderLegend() {
@@ -256,43 +433,45 @@ function renderLegend() {
   const vals = [];
   for (const l of state.locations || []) {
     const d = getLocationDay(l.id, di);
-    const v = state.variable === "tmax" ? d?.tmax?.consensus : d?.tmin?.consensus;
+    const v = state.variable === "tmax" ? d?.tmax?.consensus : state.variable === "tmin" ? d?.tmin?.consensus : d?.spread_c;
     if (typeof v === "number") vals.push(v);
   }
   if (!vals.length) { el.innerHTML = "<span>No data</span>"; return; }
   const lo = Math.min(...vals), hi = Math.max(...vals);
-  el.innerHTML = `<span>${state.variable === "tmax" ? "HIGH" : "LOW"} (°C)</span>
+  const isSpread = state.variable === "agreement";
+  const mid = (lo + hi) / 2;
+  const label = state.variable === "tmax" ? "HIGH °C" : state.variable === "tmin" ? "LOW °C" : "SPREAD °C";
+  el.innerHTML = `<span>${label}</span>
     <div>
-      <div class="bar" style="background:linear-gradient(to right,${tempColor(lo,lo,hi)},${tempColor((lo+hi)/2,lo,hi)},${tempColor(hi,lo,hi)})"></div>
-      <div class="labels"><span>${lo.toFixed(1)}</span><span>${((lo+hi)/2).toFixed(1)}</span><span>${hi.toFixed(1)}</span></div>
+      <div class="bar" style="background:linear-gradient(to right,${tempColor(lo,lo,hi,isSpread)},${tempColor(mid,lo,hi,isSpread)},${tempColor(hi,lo,hi,isSpread)})"></div>
+      <div class="labels"><span>${isSpread?'±':''}${lo.toFixed(1)}</span><span>${isSpread?'±':''}${mid.toFixed(1)}</span><span>${isSpread?'±':''}${hi.toFixed(1)}</span></div>
     </div>`;
 }
 
 function renderSources() {
-  const m = state.models || { implemented: [], unavailable: [] };
+  const m = state.models || { implemented: [], unavailable: [], registry: [] };
   const lines = [];
-  lines.push(`<b>${m.implemented?.length || 0} models implemented via Open-Meteo CC-BY 4.0 (non-commercial):</b>`);
+  lines.push(`<b>Geographic data:</b> Municipal boundaries © GADM 4.1 (free for academic/non-commercial use; redistribution restricted without permission; used here for choropleth visualization). Basemap © OpenStreetMap contributors (ODbL). Representative points: Wikipedia/Philatlas/Open-Meteo cross-check (town centres).`);
+  lines.push(`<br><b>${m.implemented?.length || 0} eligible independent models implemented via Open-Meteo CC-BY 4.0 (non-commercial):</b>`);
   lines.push("<ul>");
-  for (const im of (m.implemented || [])) lines.push(`<li>${im.label} — ${im.centre} (~${im.nativeResKm} km)</li>`);
+  for (const im of (m.implemented || [])) lines.push(`<li><b>${im.shortLabel}</b> — ${im.centre} (~${im.nativeResKm} km)${im.aliasGroup ? ` [alias-group: ${im.aliasGroup}]` : ""}</li>`);
   lines.push("</ul>");
-  if (m.unavailable?.length) {
-    lines.push(`<b>${m.unavailable.length} target models unavailable in v0.1:</b><ul>`);
-    for (const u of m.unavailable) lines.push(`<li><b>${u.label}</b> — ${u.reason}</li>`);
+  const unavail = (m.unavailable || []).filter((u) => u.status !== "excluded_by_design");
+  if (unavail.length) {
+    lines.push(`<b>${unavail.length} target models NOT eligible in v0.1:</b><ul>`);
+    for (const u of unavail) lines.push(`<li><b>${u.label}</b> <span class="muted">(${u.status})</span> — ${u.reason}</li>`);
     lines.push("</ul>");
   }
-  lines.push(`<div>${m.attribution || ""}</div>`);
+  lines.push(`<div class="mono small">Open-Meteo terms verified 2026-10-23: free non-commercial API, CC-BY 4.0, &lt;10,000 calls/day, &lt;5,000/hour, &lt;600/minute. Evidence fixture: <code>docs/verification/open-meteo-models-2026-10-23.json</code>.</div>`);
   $("#sourceBlock").innerHTML = lines.join("");
+  $(".map-attribution").innerHTML = `Municipalities: GADM 4.1 (non-commercial) · Basemap: OpenStreetMap`;
 }
 
 async function renderBulletin() {
   const day = state.selectedDateIdx;
   try {
     const r = await fetch(`/api/bulletin?day=${day}`);
-    if (r.ok) {
-      $("#bulletinText").textContent = await r.text();
-    } else {
-      $("#bulletinText").textContent = "(Bulletin unavailable — " + r.status + ")";
-    }
+    $("#bulletinText").textContent = r.ok ? await r.text() : `(Bulletin unavailable — HTTP ${r.status})`;
   } catch (e) {
     $("#bulletinText").textContent = "(Bulletin unavailable — " + e.message + ")";
   }
@@ -301,21 +480,25 @@ async function renderBulletin() {
 function getLocationDay(locId, dayIdx) {
   const b = state.bundle;
   const loc = (b?.locations || []).find((l) => l.locationId === locId);
-  if (!loc || !loc.days) return null;
-  return loc.days[dayIdx] || null;
+  return loc?.days?.[dayIdx] || null;
 }
 
-function tempColor(t, lo, hi) {
-  if (typeof t !== "number") return "#555";
+function tempColor(t, lo, hi, isSpread = false) {
+  if (typeof t !== "number") return "rgba(80,80,80,0.4)";
   const range = Math.max(hi - lo, 0.5);
   const x = Math.max(0, Math.min(1, (t - lo) / range));
-  // Cool (blue) -> mid (teal) -> warm (amber) -> hot (red)
-  const stops = [
-    [0.00, [79, 195, 247]],   // blue (cool)
-    [0.45, [129, 199, 132]],  // green
-    [0.70, [255, 183, 77]],   // amber
-    [1.00, [239, 83, 80]],    // red
-  ];
+  const stops = isSpread
+    ? [
+        [0.0, [46, 125, 50]],    // green (low spread = agreement)
+        [0.5, [255, 183, 77]],  // amber
+        [1.0, [239, 83, 80]],   // red (high spread = disagreement)
+      ]
+    : [
+        [0.00, [79, 195, 247]], // blue (cool)
+        [0.45, [129, 199, 132]],// green
+        [0.70, [255, 183, 77]], // amber
+        [1.00, [239, 83, 80]],  // red (hot)
+      ];
   for (let i = 0; i < stops.length - 1; i++) {
     const [s0, c0] = stops[i], [s1, c1] = stops[i+1];
     if (x >= s0 && x <= s1) {
@@ -326,7 +509,7 @@ function tempColor(t, lo, hi) {
       return `rgb(${r},${g},${b})`;
     }
   }
-  return "rgb(239,83,80)";
+  return `rgb(${stops[stops.length-1][1].join(",")})`;
 }
 
 function formatPST(iso) {

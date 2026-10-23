@@ -1,13 +1,14 @@
 // Open-Meteo Forecast API client.
 //
-// We request deterministic daily tmax/tmin for all MODELS in one HTTP request
-// per location, using the documented &models= multi-model parameter.
-// Open-Meteo returns per-model variables with suffix _{modelId}.
+// We request deterministic daily tmax/tmin for all ELIGIBLE VERIFIED models
+// (from MODEL_REGISTRY) in one HTTP request per location, using the documented
+// &models= multi-model parameter. Open-Meteo returns per-model variables with
+// suffix _{modelId}.
 //
 // Bounded retries, timeouts, and explicit error recording — no silent
 // substitution of values.
 
-import { MODELS } from "../models.js";
+import { MODEL_API_IDS } from "../models.js";
 
 const OPEN_METEO_BASE = "https://api.open-meteo.com/v1/forecast";
 
@@ -35,7 +36,7 @@ export async function fetchOpenMeteo({
   url.searchParams.set("daily", "temperature_2m_max,temperature_2m_min");
   url.searchParams.set("timezone", "Asia/Manila");
   url.searchParams.set("forecast_days", String(days));
-  url.searchParams.set("models", MODELS.map((m) => m.apiId).join(","));
+  url.searchParams.set("models", MODEL_API_IDS.join(","));
   url.searchParams.set("temperature_unit", "celsius");
   url.searchParams.set("windspeed_unit", "kmh");
   // Request past_days=0 explicitly.
@@ -89,21 +90,23 @@ export function parseOpenMeteoResponse(data) {
   const daily = data.daily || {};
   const dates = daily.time || [];
   const perModel = [];
-  for (const m of MODELS) {
-    const tmaxKey = `temperature_2m_max_${m.id}`;
-    const tminKey = `temperature_2m_min_${m.id}`;
-    const tmaxRaw = daily[tmaxKey];
-    const tminRaw = daily[tminKey];
+  for (const mid of MODEL_API_IDS) {
+    const tmaxKey = `temperature_2m_max_${mid}`;
+    const tminKey = `temperature_2m_min_${mid}`;
+    // When exactly one model is requested (single-model batch), Open-Meteo
+    // returns unsuffixed keys; when multi-model are requested it suffixes.
+    // We look up both to be safe.
+    const tmaxRaw = daily[tmaxKey] ?? (MODEL_API_IDS.length === 1 ? daily["temperature_2m_max"] : undefined);
+    const tminRaw = daily[tminKey] ?? (MODEL_API_IDS.length === 1 ? daily["temperature_2m_min"] : undefined);
     if (!tmaxRaw || !tminRaw) {
-      perModel.push({ modelId: m.id, tmax: dates.map(() => null), tmin: dates.map(() => null), status: "missing_in_response" });
+      perModel.push({ modelId: mid, tmax: dates.map(() => null), tmin: dates.map(() => null), status: "missing_in_response" });
       continue;
     }
-    // Normalize: convert to number | null, drop NaNs and non-numeric.
     const tmax = tmaxRaw.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
     const tmin = tminRaw.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
     const allNull = tmax.every((v) => v === null) && tmin.every((v) => v === null);
     perModel.push({
-      modelId: m.id,
+      modelId: mid,
       tmax, tmin,
       status: allNull ? "all_null" : "ok",
     });

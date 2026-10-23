@@ -6,7 +6,7 @@
 // successful forecast.
 
 import { LOCATIONS } from "./locations.js";
-import { MODELS } from "./models.js";
+import { IMPLEMENTED_MODELS, MODEL_REGISTRY } from "./models.js";
 import { fetchOpenMeteo, parseOpenMeteoResponse } from "./providers/open-meteo.js";
 import { buildLocationForecast } from "./aggregation/aggregate.js";
 
@@ -86,7 +86,13 @@ export async function runPipeline({ fetchFn, store, days = 7, baseUrl, force = f
     timezone: "Asia/Manila",
     startedAt,
     completedAt,
-    models: MODELS.map((m) => ({ id: m.id, label: m.label, centre: m.centre, nativeResKm: m.nativeResKm })),
+    models: IMPLEMENTED_MODELS.map((m) => ({ id: m.id, label: m.shortLabel, centre: m.centre, nativeResKm: m.nativeResKm })),
+    modelRegistry: MODEL_REGISTRY.map((m) => ({
+      targetLabel: m.targetLabel, availabilityStatus: m.availabilityStatus,
+      productType: m.productType, consensusEligible: m.consensusEligible,
+      exclusionReason: m.exclusionReason, provider: m.provider,
+      requestedModelId: m.requestedModelId, nativeResolution: m.nativeResolution,
+    })),
     locations: results,
     summary: {
       totalLocations: LOCATIONS.length,

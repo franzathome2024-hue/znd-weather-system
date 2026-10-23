@@ -19,7 +19,7 @@
 
 import { runPipeline } from "../pipeline.js";
 import { LOCATIONS } from "../locations.js";
-import { MODELS, UNAVAILABLE_MODELS, OPEN_METEO_ATTRIBUTION } from "../models.js";
+import { IMPLEMENTED_MODELS, UNAVAILABLE_MODELS, OPEN_METEO_ATTRIBUTION, MODEL_REGISTRY, FEED_COUNTS } from "../models.js";
 import { generateBisayaBulletin } from "../bulletin/bisaya.js";
 
 function cacheKeyFor(days) {
@@ -70,11 +70,23 @@ async function handleApi(request, env, ctx) {
     }
     if (url.pathname === "/api/models") {
       return json({
-        implemented: MODELS.map((m) => ({
-          id: m.id, label: m.label, centre: m.centre, priority: m.priority,
-          nativeResKm: m.nativeResKm, updateCycle: m.updateCycle,
+        implemented: IMPLEMENTED_MODELS.map((m) => ({
+          id: m.id, shortLabel: m.shortLabel, label: m.label, centre: m.centre,
+          priority: m.priority, nativeResKm: m.nativeResKm,
+          license: m.license, attribution: m.attribution,
+          aliasGroup: m.aliasGroup, evidence: m.evidence,
         })),
         unavailable: UNAVAILABLE_MODELS,
+        registry: MODEL_REGISTRY.map((m) => ({
+          targetLabel: m.targetLabel, provider: m.provider,
+          endpoint: m.endpoint, requestedModelId: m.requestedModelId,
+          productType: m.productType, nativeResolution: m.nativeResolution,
+          geographicCoverage: m.geographicCoverage, availabilityStatus: m.availabilityStatus,
+          consensusEligible: m.consensusEligible, exclusionReason: m.exclusionReason,
+          lastVerifiedAt: m.lastVerifiedAt,
+          license: m.license, attributionRequirements: m.attributionRequirements,
+        })),
+        feedCounts: FEED_COUNTS,
         attribution: OPEN_METEO_ATTRIBUTION,
       });
     }
