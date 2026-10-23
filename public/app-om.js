@@ -65,11 +65,16 @@ function summarizeMeta(j, variable) {
 }
 
 // Simple in-memory cache for latest.json metadata (does not survive reload,
-// but avoids repeat fetches while the page is up).
+// but avoids repeat fetches while the page is up). We explicitly set
+// cache: 'no-cache' so the browser revalidates against S3 on each navigation
+// (forecast grids update hourly). We use default CORS mode — S3 returns
+// Access-Control-Allow-Origin: * for this bucket, which allows reading the
+// JSON response; mode: 'no-cors' would give us an opaque response that we
+// could not .json() and would also be the wrong place for that string.
 const metaCache = new Map();
 async function fetchJsonCached(url) {
   if (metaCache.has(url)) return metaCache.get(url);
-  const p = fetch(url, { cache: 'no-cors' }).then(async (r) => {
+  const p = fetch(url, { cache: 'no-cache', mode: 'cors' }).then(async (r) => {
     if (!r.ok) throw new Error(`metadata ${url} HTTP ${r.status}`);
     return r.json();
   });
