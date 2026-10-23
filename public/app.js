@@ -125,70 +125,134 @@ function initMap() {
   map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "top-right");
   state.map = map;
 
-  map.on("load", () => {
-    if (state.geo) {
+  // Use a single 'style.load' handler and guard it with a flag so style
+  // reloads (e.g. setStyle later) never double-register sources/layers.
+  // MapLibre fires 'style.load' once for the initial style and again for
+  // any future style.setStyle / style import; the second firing would
+  // otherwise throw "Source with id 'municipalities' already exists."
+  let mapLayersInstalled = false;
+  const installOverlay = () => {
+    if (mapLayersInstalled) return;
+    // If the style hasn't finished loading yet (e.g. 'styledataloading' is
+    // in progress), wait for the next idle.
+    if (!map.isStyleLoaded()) {
+      map.once("idle", installOverlay);
+      return;
+    }
+    mapLayersInstalled = true;
+    addMunicipalities();
+    // Always render point markers even without polygons
+    renderMap();
+  };
+
+  function addMunicipalities() {
+    if (!state.geo) return;
+    // Guard against duplicate source/layer registration on style reload.
+    if (!map.getSource("municipalities")) {
       map.addSource("municipalities", { type: "geojson", data: state.geo, generateId: false });
+    }
+    if (!map.getLayer("muni-fill")) {
       map.addLayer({
         id: "muni-fill",
         type: "fill",
         source: "municipalities",
         paint: {
           "fill-color": ["get", "fillColor"],
+          // Translucent choropleth so the basemap labels/roads remain visible
+          // underneath while temperature colors are still readable.
           "fill-opacity": [
             "case",
-            ["boolean", ["feature-state", "hover"], false], 0.85,
-            0.7,
+            ["boolean", ["feature-state", "hover"], false], 0.75,
+            0.55,
           ],
-          "fill-outline-color": "#000000",
+          "fill-outline-color": "rgba(0,0,0,0.15)",
         },
       });
+    }
+    if (!map.getLayer("muni-line")) {
       map.addLayer({
         id: "muni-line",
         type: "line",
         source: "municipalities",
-        paint: { "line-color": "#000", "line-width": 0.75, "line-opacity": 0.6 },
-      });
-      // Labels (simple text labels at centroid — built client-side)
-      map.on("click", "muni-fill", (e) => {
-        const fid = e.features?.[0]?.properties?.id;
-        if (fid) { state.selectedLocId = fid; render(); }
-      });
-      map.on("mousemove", "muni-fill", (e) => {
-        const fid = e.features?.[0]?.properties?.id;
-        if (fid && fid !== state.hoverLocId) {
-          if (state.hoverLocId) map.setFeatureState(
-            { source: "municipalities", id: featureIdByLoc(state.hoverLocId) },
-            { hover: false }
-          );
-          state.hoverLocId = fid;
-          map.setFeatureState(
-            { source: "municipalities", id: featureIdByLoc(fid) },
-            { hover: true }
-          );
-          map.getCanvas().style.cursor = "pointer";
-          const loc = state.locations.find(l=>l.id===fid);
-          const d = getLocationDay(fid, state.selectedDateIdx);
-          if (loc && d) {
-            const hi = d.tmax?.consensus; const lo = d.tmin?.consensus;
-            showPopup(loc, hi, lo, e.lngLat);
-          }
-        }
-      });
-      map.on("mouseleave", "muni-fill", () => {
-        if (state.hoverLocId) {
-          map.setFeatureState(
-            { source: "municipalities", id: featureIdByLoc(state.hoverLocId) },
-            { hover: false }
-          );
-        }
-        state.hoverLocId = null;
-        map.getCanvas().style.cursor = "";
-        if (state.popup) { state.popup.remove(); state.popup = null; }
+        paint: { "line-color": "rgba(0,0,0,0.55)", "line-width": 0.75, "line-opacity": 0.75 },
       });
     }
-    // Always render point markers even without polygons
-    renderMap();
+    map.on("click", "muni-fill", (e) => {
+      const fid = e.features?.[0]?.properties?.id;
+      if (fid) { state.selectedLocId = fid; render(); }
+    });
+    map.on("mousemove", "muni-fill", (e) => {
+      const fid = e.features?.[0]?.properties?.id;
+      if (fid && fid !== state.hoverLocId) {
+        if (state.hoverLocId) map.setFeatureState(
+          { source: "municipalities", id: featureIdByLoc(state.hoverLocId) },
+          { hover: false }
+        );
+        state.hoverLocId = fid;
+        map.setFeatureState(
+          { source: "municipalities", id: featureIdByLoc(fid) },
+          { hover: true }
+        );
+        map.getCanvas().style.cursor = "pointer";
+        const loc = state.locations?.find(l => l.id === fid);
+        const d = getLocationDay(fid, state.selectedDateIdx);
+        if (loc && d) {
+          const hi = d.tmax?.consensus; const lo = d.tmin?.consensus;
+          showPopup(loc, hi, lo, e.lngLat);
+        }
+      }
+    });
+    map.on("mouseleave", "muni-fill", () => {
+      if (state.hoverLocId) {
+        map.setFeatureState(
+          { source: "municipalities", id: featureIdByLoc(state.hoverLocId) },
+          { hover: false }
+        );
+      }
+      state.hoverLocId = null;
+      map.getCanvas().style.cursor = "";
+      if (state.popup) { state.popup.remove(); state.popup = null; }
+    });
+
+    // Auto-fit the map view to the province polygon bounds (instead of a
+    // hardcoded center/zoom) so the choropleth is always aligned with the
+    // visible province regardless of polygon extent.
+    try {
+      const bbox = geoBounds(state.geo);
+      if (bbox) {
+        map.fitBounds(bbox, { padding: 16, duration: 0, maxZoom: 9.5 });
+      }
+    } catch (_) { /* ignore — fall back to default center/zoom */ }
+  }
+
+  // If a style reload occurs (e.g. future style swap), reset the flag so we
+  // re-attach sources/layers to the new style.
+  map.on("style.load", () => {
+    mapLayersInstalled = false;
+    installOverlay();
   });
+  // Install on the initial load too.
+  map.on("load", installOverlay);
+}
+
+// Compute [SW, NE] bounds [[minLon,minLat],[maxLon,maxLat]] for a GeoJSON.
+function geoBounds(gj) {
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+  let has = false;
+  (function walk(g) {
+    if (!g) return;
+    if (Array.isArray(g)) {
+      if (typeof g[0] === "number" && g.length >= 2) {
+        const [lon, lat] = g;
+        if (lon < minLon) minLon = lon; if (lon > maxLon) maxLon = lon;
+        if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+        has = true;
+      } else { g.forEach(walk); }
+    } else if (g.type === "FeatureCollection") g.features.forEach(walk);
+    else if (g.type === "Feature") walk(g.geometry);
+    else if (g.coordinates) walk(g.coordinates);
+  })(gj);
+  return has ? [[minLon, minLat], [maxLon, maxLat]] : null;
 }
 
 let _featureIndex = null;
@@ -340,10 +404,17 @@ function renderLocDetail() {
   }
 }
 
+function mapReady() {
+  return state.map && state.map.isStyleLoaded() && state.map.getSource("municipalities");
+}
+
 function renderMap() {
-  if (!state.map || !state.map.getSource("municipalities")) {
-    // render points if no polygons
-    renderPointMarkers();
+  if (!state.map) return;
+  if (!mapReady()) {
+    // Overlay not installed yet; render point markers if polygons unavailable,
+    // and re-run render after the style is loaded.
+    if (!state.geo) renderPointMarkers();
+    if (state.map.isStyleLoaded() === false) state.map.once("idle", () => renderMap());
     return;
   }
   const di = state.selectedDateIdx;
@@ -393,6 +464,8 @@ function renderMap() {
 }
 
 function renderPointCenters() {
+  if (!state.map || !state.map.isStyleLoaded()) return;
+  if (state.map.getLayer("muni-fill") && !state.map.getLayer("selected-line")) return; // will be added after map is fully initialized
   // Add / update a label layer with small centroid numbers
   const di = state.selectedDateIdx;
   const feats = [];
@@ -407,35 +480,37 @@ function renderPointCenters() {
       properties: { label: state.variable === "agreement" ? "±" + v.toFixed(0) : v.toFixed(0) },
     });
   }
-  const src = state.map.getSource("centers");
   const data = { type: "FeatureCollection", features: feats };
-  if (src) src.setData(data);
-  else {
+  // Ensure source/layer exist without double-registering on style reload.
+  if (!state.map.getSource("centers")) {
     state.map.addSource("centers", { type: "geojson", data });
+  } else {
+    state.map.getSource("centers").setData(data);
+  }
+  if (!state.map.getLayer("centers-sym")) {
+    const before = state.map.getLayer("selected-line") ? "selected-line" : undefined;
     state.map.addLayer({
       id: "centers-sym", type: "symbol", source: "centers",
       layout: { "text-field": ["get", "label"], "text-size": 10, "text-font": ["literal", ["Arial Unicode MS Bold"]] },
       paint: { "text-color": "#fff", "text-halo-color": "#000", "text-halo-width": 1.2 },
-    }, "selected-line");
+    }, before);
   }
 }
 
 // No-polygon fallback
 function renderPointMarkers() {
-  if (!state.map) return;
-  // simple circles
-  if (!state.map.getSource("points")) {
-    const feats = [];
-    const di = state.selectedDateIdx;
-    for (const l of state.locations || []) {
-      feats.push({ type: "Feature", geometry: { type: "Point", coordinates: [l.lon, l.lat] }, properties: { id: l.id } });
-    }
-    state.map.addSource("points", { type: "geojson", data: { type: "FeatureCollection", features: feats } });
-    state.map.addLayer({
-      id: "points-circles", type: "circle", source: "points",
-      paint: { "circle-radius": 6, "circle-color": "#4fc3f7", "circle-stroke-color": "#000", "circle-stroke-width": 1 },
-    });
+  if (!state.map || !state.map.isStyleLoaded()) return;
+  if (state.map.getSource("points")) return;
+  const feats = [];
+  const di = state.selectedDateIdx;
+  for (const l of state.locations || []) {
+    feats.push({ type: "Feature", geometry: { type: "Point", coordinates: [l.lon, l.lat] }, properties: { id: l.id } });
   }
+  state.map.addSource("points", { type: "geojson", data: { type: "FeatureCollection", features: feats } });
+  state.map.addLayer({
+    id: "points-circles", type: "circle", source: "points",
+    paint: { "circle-radius": 6, "circle-color": "#4fc3f7", "circle-stroke-color": "#000", "circle-stroke-width": 1 },
+  });
 }
 
 function flyTo(locId) {
@@ -470,7 +545,7 @@ function renderLegend() {
 function renderSources() {
   const m = state.models || { implemented: [], unavailable: [], registry: [] };
   const lines = [];
-  lines.push(`<b>Geographic data:</b> Municipal boundaries © GADM 4.1 (free for academic/non-commercial use; redistribution restricted without permission; used here for choropleth visualization). Basemap © OpenStreetMap contributors (ODbL). Representative points: Wikipedia/Philatlas/Open-Meteo cross-check (town centres).`);
+  lines.push(`<b>Geographic data:</b> Municipal overlay is a generated Voronoi approximation from verified municipal centroids (NOT official administrative boundaries — visualization only). Basemap © OpenStreetMap contributors (ODbL). Representative points: Wikipedia / Philatlas / Open-Meteo geocoding cross-check (town centres).`);
   lines.push(`<br><b>${m.implemented?.length || 0} eligible independent models implemented via Open-Meteo CC-BY 4.0 (non-commercial):</b>`);
   lines.push("<ul>");
   for (const im of (m.implemented || [])) lines.push(`<li><b>${im.shortLabel}</b> — ${im.centre} (~${im.nativeResKm} km)${im.aliasGroup ? ` [alias-group: ${im.aliasGroup}]` : ""}</li>`);
@@ -483,7 +558,7 @@ function renderSources() {
   }
   lines.push(`<div class="mono small">Open-Meteo terms verified 2026-10-23: free non-commercial API, CC-BY 4.0, &lt;10,000 calls/day, &lt;5,000/hour, &lt;600/minute. Evidence fixture: <code>docs/verification/open-meteo-models-2026-10-23.json</code>.</div>`);
   $("#sourceBlock").innerHTML = lines.join("");
-  $(".map-attribution").innerHTML = `Municipalities: GADM 4.1 (non-commercial) · Basemap: OpenStreetMap`;
+  $(".map-attribution").innerHTML = `Municipal overlay: approximate (not official) · Basemap: OpenStreetMap`;
 }
 
 async function renderBulletin() {

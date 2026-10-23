@@ -63,7 +63,10 @@
     <h2>Per-model values (°C)</h2>
     <div class="table-wrap">
       <table id="modelTable" class="model-table">
-        <thead><tr><th>Model</th><th>High</th><th>Low</th></tr></thead>
+        <colgroup>
+          <col class="name"><col class="num-c hi-col"><col class="num-c lo-col">
+        </colgroup>
+        <thead><tr><th>Model</th><th class="num">High</th><th class="num">Low</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -73,7 +76,10 @@
     <h2>All locations — consensus high / low (°C)</h2>
     <div class="table-wrap">
       <table id="allTable" class="all-table">
-        <thead><tr><th>Location</th><th>Low</th><th>High</th><th>Models</th><th>Spread</th></tr></thead>
+        <colgroup>
+          <col class="name"><col class="num-c lo-col"><col class="num-c hi-col"><col class="num-c models-col"><col class="num-c spread-col">
+        </colgroup>
+        <thead><tr><th>Location</th><th class="num">Low</th><th class="num">High</th><th class="num">Models</th><th class="num">Spread</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
@@ -88,7 +94,7 @@
   <section class="panel sources-panel">
     <h2>Source, geographic data &amp; attribution</h2>
     <div id="sourceBlock" class="small"></div>
-    <p class="disclaimer small muted">Forecasts are point-based representative values at each municipal centre and can differ for inland/coastal barangays. Consensus uses the MEDIAN across independent eligible global models after alias de-duplication; contributor counts are reported separately for high and low. Municipal boundaries © GADM 4.1 (non-commercial; see below). Basemap © OpenStreetMap contributors. Follow DOST-PAGASA for official warnings.</p>
+    <p class="disclaimer small muted">Forecasts are point-based representative values at each municipal centre and can differ for inland/coastal barangays. Consensus uses the MEDIAN across independent eligible global models after alias de-duplication; contributor counts are reported separately for high and low. The municipal overlay is a generated Voronoi approximation — NOT an official administrative boundary — used solely for visualization. Basemap © OpenStreetMap contributors. Follow DOST-PAGASA for official warnings.</p>
   </section>
 </main>
 
