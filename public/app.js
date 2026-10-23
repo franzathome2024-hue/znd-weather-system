@@ -17,6 +17,12 @@ const state = {
   variable: "tmax", // 'tmax' | 'tmin' | 'agreement'
   map: null,
   hoverLocId: null,
+  // National ECMWF temperature overlay state
+  view: "national", // 'national' | 'zamboanga'
+  overlayReady: false,
+  overlayError: null,
+  overlaySourceId: "om-temp",
+  overlayLayerId: "om-temp-layer",
 };
 
 init().catch((e) => {
@@ -37,8 +43,25 @@ async function init() {
 }
 
 function bindUi() {
-  $("#varSelect").addEventListener("change", (e) => { state.variable = e.target.value; renderMap(); renderLegend(); });
-  $("#dateSelect").addEventListener("change", (e) => { state.selectedDateIdx = parseInt(e.target.value, 10); render(); });
+  $("#mapViewSelect").addEventListener("change", (e) => {
+    state.view = e.target.value;
+    applyViewMode();
+    renderMap();
+    renderLegend();
+    flyToView();
+  });
+  $("#varSelect").addEventListener("change", (e) => {
+    state.variable = e.target.value;
+    syncOverlayTimeOptions();
+    renderMap();
+    renderLegend();
+  });
+  $("#overlayTimeSelect").addEventListener("change", () => { renderMap(); renderLegend(); });
+  $("#dateSelect").addEventListener("change", (e) => {
+    state.selectedDateIdx = parseInt(e.target.value, 10);
+    syncOverlayTimeOptions();
+    render();
+  });
   $("#locSearch").addEventListener("input", (e) => renderLocList(e.target.value));
   $("#btnRefresh").addEventListener("click", () => loadForecast(true));
   $("#btnBulletin").addEventListener("click", renderBulletin);
@@ -141,6 +164,9 @@ function initMap() {
     }
     mapLayersInstalled = true;
     addMunicipalities();
+    addNationalOverlay();
+    applyViewMode();
+    flyToView();
     // Always render point markers even without polygons
     renderMap();
   };
@@ -214,15 +240,8 @@ function initMap() {
       if (state.popup) { state.popup.remove(); state.popup = null; }
     });
 
-    // Auto-fit the map view to the province polygon bounds (instead of a
-    // hardcoded center/zoom) so the choropleth is always aligned with the
-    // visible province regardless of polygon extent.
-    try {
-      const bbox = geoBounds(state.geo);
-      if (bbox) {
-        map.fitBounds(bbox, { padding: 16, duration: 0, maxZoom: 9.5 });
-      }
-    } catch (_) { /* ignore — fall back to default center/zoom */ }
+    // Defer initial extent to flyToView() which respects state.view (national
+    // vs Zamboanga LGU extent).
   }
 
   // If a style reload occurs (e.g. future style swap), reset the flag so we
@@ -273,6 +292,186 @@ function showPopup(loc, hi, lo, lngLat) {
 function dFor(locId) {
   const d = getLocationDay(locId, state.selectedDateIdx);
   return d ? d.date : "";
+}
+
+// --- National PH temperature overlay (ECMWF IFS via Open-Meteo weather-map-layer) ---
+const PH_EXTENT = [[116.5, 4.3], [127.0, 21.2]]; // [SW, NE] — Luzon+VisMin+Tawi-Tawi+Batanes
+
+function addNationalOverlay() {
+  const map = state.map;
+  if (!map) return;
+  // The omOverlay module sets up window.omOverlay via app-om.js. If it hasn't
+  // finished (e.g. slow fetch of latest.json), retry shortly.
+  const om = window.omOverlay;
+  if (!om || !om.state.ready) {
+    if (om && om.state.error) {
+      state.overlayError = om.state.error;
+      showOverlayWarn(`National overlay unavailable: ${om.state.error}`);
+    } else {
+      setTimeout(addNationalOverlay, 250);
+    }
+    return;
+  }
+  state.overlayReady = true;
+  state.overlayError = null;
+  hideOverlayWarn();
+  syncOverlayTimeOptions();
+  // Source/layer are added on demand (renderMap); re-apply view mode in case
+  // it was toggled before the overlay was ready.
+  applyViewMode();
+}
+
+function showOverlayWarn(msg) {
+  const el = $("#warnOverlay");
+  if (!el) return;
+  el.textContent = "⚠ " + msg;
+  el.classList.remove("hidden");
+}
+function hideOverlayWarn() {
+  const el = $("#warnOverlay");
+  if (el) { el.classList.add("hidden"); el.textContent = ""; }
+}
+
+// Map the UI variable (tmax/tmin/agreement) to the underlying Open-Meteo
+// variable key. The 'agreement' spread map is NOT available on the national
+// overlay (we have no model-by-model grid); we fall back to tmax but render
+// the national layer at low opacity and still show the Zamboanga detail.
+function omVariableFor(uiVar) {
+  if (uiVar === "tmin") return "temperature_2m_min";
+  return "temperature_2m_max";
+}
+
+function syncOverlayTimeOptions() {
+  const om = window.omOverlay;
+  const omState = om?.state;
+  const sel = $("#overlayTimeSelect");
+  const metaEl = $("#overlayMeta");
+  const ctrl = $("#overlayCtrl");
+  if (!omState?.ready || !sel || !ctrl) return;
+  ctrl.hidden = state.view !== "national";
+  if (state.view !== "national") return;
+  const varKey = omVariableFor(state.variable);
+  const meta = omState.meta.vars[varKey];
+  if (!meta || !meta.validTimes.length) {
+    sel.innerHTML = "";
+    if (metaEl) metaEl.textContent = `No valid times for ${varKey}.`;
+    return;
+  }
+  // Build list of available valid times. If the user is on the LGU daily
+  // picker, default to the best matching day frame.
+  sel.innerHTML = "";
+  const di = state.selectedDateIdx;
+  const sample = (state.bundle?.locations || []).find((l) => l.dates?.[di]);
+  const phDate = sample?.dates?.[di] || new Date().toISOString().slice(0,10);
+  const auto = om.pickValidTime(state.variable, phDate, meta.validTimes);
+  meta.validTimes.forEach((vt) => {
+    const opt = document.createElement("option");
+    opt.value = vt;
+    // Display in Philippine Time (UTC+8)
+    const d = new Date(vt);
+    const pht = new Date(d.getTime() + 8*3600*1000);
+    const pad = (n) => String(n).padStart(2,"0");
+    opt.textContent = `${pht.getUTCFullYear()}-${pad(pht.getUTCMonth()+1)}-${pad(pht.getUTCDate())} ${pad(pht.getUTCHours())}:${pad(pht.getUTCMinutes())} PHT`;
+    sel.appendChild(opt);
+  });
+  if (auto) sel.value = auto; else sel.selectedIndex = 0;
+  if (metaEl) {
+    const ref = meta.reference_time ? `ref ${meta.reference_time.replace("Z"," UTC")}` : "";
+    metaEl.textContent = `ECMWF IFS ~9 km · ${ref} · ${meta.validTimes.length} frame${meta.validTimes.length===1?"":"s"} · bilinear display`;
+  }
+}
+
+function installOrUpdateOmSource() {
+  const map = state.map;
+  const om = window.omOverlay;
+  if (!map || !om?.state?.ready) return;
+  const varKey = omVariableFor(state.variable);
+  const validTime = $("#overlayTimeSelect")?.value || null;
+  const srcId = state.overlaySourceId;
+  const layerId = state.overlayLayerId;
+  let src;
+  try {
+    src = om.buildSource(varKey, validTime);
+  } catch (e) {
+    console.warn("om buildSource failed:", e);
+    showOverlayWarn("Could not build national overlay source: " + e.message);
+    return;
+  }
+  // MapLibre custom sources are added via map.addSource with type:'custom'.
+  // createRasterSource already returns the source config (type:'custom',
+  // loadTile, etc.). If the source already exists we have to remove+re-add —
+  // MapLibre doesn't allow re-setting a custom source.
+  if (map.getSource(srcId)) {
+    if (map.getLayer(layerId)) map.removeLayer(layerId);
+    map.removeSource(srcId);
+  }
+  try {
+    map.addSource(srcId, src);
+  } catch (e) {
+    console.warn("om addSource failed:", e);
+    showOverlayWarn("National overlay layer failed: " + e.message);
+    return;
+  }
+  if (!map.getLayer(layerId)) {
+    map.addLayer({
+      id: layerId,
+      type: "raster",
+      source: srcId,
+      paint: {
+        "raster-opacity": 0.6,
+        "raster-fade-duration": 250,
+        // Resampling handled by the library (returns ImageBitmap from native
+        // grid); 'linear' here gives bilinear upscale on map zoom-in.
+        "raster-resampling": "linear",
+      },
+    },
+    // Insert above basemap but below municipal polygons so click/hover on
+    // Zamboanga LGUs still works when toggled to zamboanga view.
+    state.geo && map.getLayer("muni-fill") ? "muni-fill" : undefined);
+  }
+}
+
+function removeOmSource() {
+  const map = state.map;
+  if (!map) return;
+  if (map.getLayer(state.overlayLayerId)) map.removeLayer(state.overlayLayerId);
+  if (map.getSource(state.overlaySourceId)) map.removeSource(state.overlaySourceId);
+}
+
+function applyViewMode() {
+  const map = state.map;
+  if (!map) return;
+  const isNational = state.view === "national";
+  // Municipal choropleth hidden (fill+line) in national mode; outline only
+  // selected remains. Toggle visibility to preserve feature state.
+  const toggle = (id, vis) => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+  };
+  toggle("muni-fill", isNational ? "none" : "visible");
+  toggle("muni-line", isNational ? "none" : "visible");
+  toggle("centers-sym", isNational ? "none" : "visible");
+  toggle("selected-line", isNational ? "none" : "visible");
+  // National overlay is only installed when in national view (saves
+  // bandwidth/WASM work while user is in LGU view).
+  if (isNational) {
+    installOrUpdateOmSource();
+  } else {
+    removeOmSource();
+  }
+  syncOverlayTimeOptions();
+  $("#overlayCtrl") && ($("#overlayCtrl").hidden = !isNational);
+}
+
+function flyToView() {
+  const map = state.map;
+  if (!map) return;
+  if (state.view === "national") {
+    map.fitBounds(PH_EXTENT, { padding: 24, duration: 500, maxZoom: 7 });
+  } else {
+    const bbox = state.geo ? geoBounds(state.geo) : null;
+    if (bbox) map.fitBounds(bbox, { padding: 16, duration: 500, maxZoom: 9.5 });
+    else map.flyTo({ center: [122.85, 8.1], zoom: 8, duration: 500 });
+  }
 }
 
 function render() {
@@ -405,7 +604,10 @@ function renderLocDetail() {
 }
 
 function mapReady() {
-  return state.map && state.map.isStyleLoaded() && state.map.getSource("municipalities");
+  if (!state.map || !state.map.isStyleLoaded()) return false;
+  // In national view we don't require the municipal choropleth source.
+  if (state.view === "national") return true;
+  return !!state.map.getSource("municipalities");
 }
 
 function renderMap() {
@@ -416,6 +618,12 @@ function renderMap() {
     if (!state.geo) renderPointMarkers();
     if (state.map.isStyleLoaded() === false) state.map.once("idle", () => renderMap());
     return;
+  }
+  // Refresh national overlay when in national view (var/time changes trigger
+  // a new source URL, which MapLibre re-fetches automatically only if the
+  // tiles change; custom sources require source replacement).
+  if (state.view === "national" && state.overlayReady) {
+    installOrUpdateOmSource();
   }
   const di = state.selectedDateIdx;
   // Build color lookup
@@ -433,33 +641,36 @@ function renderMap() {
   const lo = vals.length ? Math.min(...vals) : 22;
   const hi = vals.length ? Math.max(...vals) : 34;
 
-  // Update GeoJSON features with fill color
-  const data = JSON.parse(JSON.stringify(state.geo));
-  for (const f of data.features) {
-    const v = colors[f.properties.id];
-    f.properties.fillColor = v == null ? "#444" : tempColor(v, lo, hi, state.variable === "agreement");
-    f.properties.value = v;
-  }
-  state.map.getSource("municipalities").setData(data);
+  // --- LGU choropleth work (skipped in national view) ---
+  if (state.view !== "national" && state.geo && state.map.getSource("municipalities")) {
+    // Update GeoJSON features with fill color
+    const data = JSON.parse(JSON.stringify(state.geo));
+    for (const f of data.features) {
+      const v = colors[f.properties.id];
+      f.properties.fillColor = v == null ? "#444" : tempColor(v, lo, hi, state.variable === "agreement");
+      f.properties.value = v;
+    }
+    state.map.getSource("municipalities").setData(data);
 
-  // Highlight selected
-  for (const l of state.locations || []) {
-    const fid = featureIdByLoc(l.id);
-    if (fid == null) continue;
-    state.map.setFeatureState({ source: "municipalities", id: fid }, { selected: l.id === state.selectedLocId });
+    // Highlight selected
+    for (const l of state.locations || []) {
+      const fid = featureIdByLoc(l.id);
+      if (fid == null) continue;
+      state.map.setFeatureState({ source: "municipalities", id: fid }, { selected: l.id === state.selectedLocId });
+    }
+    state.map.setFilter("muni-line", null);
+    // Add a thick outline for selected
+    if (!state.map.getLayer("selected-line")) {
+      state.map.addLayer({
+        id: "selected-line", type: "line", source: "municipalities",
+        paint: { "line-color": "#ffd54f", "line-width": 2.5 },
+        filter: ["==", ["get", "id"], state.selectedLocId],
+      }, "muni-line");
+    } else {
+      state.map.setFilter("selected-line", ["==", ["get", "id"], state.selectedLocId]);
+    }
+    renderPointCenters();
   }
-  state.map.setFilter("muni-line", null);
-  // Add a thick outline for selected
-  if (!state.map.getLayer("selected-line")) {
-    state.map.addLayer({
-      id: "selected-line", type: "line", source: "municipalities",
-      paint: { "line-color": "#ffd54f", "line-width": 2.5 },
-      filter: ["==", ["get", "id"], state.selectedLocId],
-    }, "muni-line");
-  } else {
-    state.map.setFilter("selected-line", ["==", ["get", "id"], state.selectedLocId]);
-  }
-  renderPointCenters();
   renderAttribution();
 }
 
@@ -523,6 +734,27 @@ function flyTo(locId) {
 function renderLegend() {
   const el = $("#mapLegend");
   if (!state.bundle) { el.innerHTML = ""; return; }
+  if (state.view === "national" && state.overlayReady) {
+    // Use a fixed, physically interpretable scale for PH temperatures (°C).
+    // This prevents legend "stretch" when the visible frame only spans a few
+    // degrees; colors remain comparable across hours/days. The OM layer itself
+    // paints with its native color ramp; this legend matches the same cool→hot
+    // gradient used by the library's default temperature scale.
+    const lo = 20, hi = 38;
+    const mid = (lo + hi) / 2;
+    const varLabel = state.variable === "tmin" ? "NATIONAL LOW °C (ECMWF 3h-min)"
+                    : state.variable === "tmax" ? "NATIONAL HIGH °C (ECMWF 3h-max)"
+                    : "NATIONAL AFTERNOON °C (ECMWF)";
+    const selectedTime = $("#overlayTimeSelect")?.value || "";
+    const pht = selectedTime ? utcToPhtLabel(selectedTime) : "";
+    el.innerHTML = `<span>${varLabel}${pht?` · ${pht}`:""}</span>
+      <div>
+        <div class="bar" style="background:linear-gradient(to right,${tempColor(lo,lo,hi)},${tempColor(26,lo,hi)},${tempColor(mid,lo,hi)},${tempColor(32,lo,hi)},${tempColor(hi,lo,hi)})"></div>
+        <div class="labels"><span>${lo}°</span><span>26°</span><span>${mid}°</span><span>32°</span><span>${hi}°</span></div>
+      </div>
+      <div class="small muted">Native grid: ECMWF IFS reduced-Gaussian O1280 (~9 km global), WGS84. Display: bilinear. No-data: transparent (ocean/lakes).</div>`;
+    return;
+  }
   const di = state.selectedDateIdx;
   const vals = [];
   for (const l of state.locations || []) {
@@ -534,7 +766,7 @@ function renderLegend() {
   const lo = Math.min(...vals), hi = Math.max(...vals);
   const isSpread = state.variable === "agreement";
   const mid = (lo + hi) / 2;
-  const label = state.variable === "tmax" ? "HIGH °C" : state.variable === "tmin" ? "LOW °C" : "SPREAD °C";
+  const label = state.variable === "tmax" ? "HIGH °C (ZND LGU consensus)" : state.variable === "tmin" ? "LOW °C (ZND LGU consensus)" : "SPREAD °C (ZND LGU)";
   el.innerHTML = `<span>${label}</span>
     <div>
       <div class="bar" style="background:linear-gradient(to right,${tempColor(lo,lo,hi,isSpread)},${tempColor(mid,lo,hi,isSpread)},${tempColor(hi,lo,hi,isSpread)})"></div>
@@ -542,11 +774,20 @@ function renderLegend() {
     </div>`;
 }
 
+function utcToPhtLabel(isoZ) {
+  // isoZ e.g. 2026-10-23T06:00Z
+  const d = new Date(isoZ);
+  const pht = new Date(d.getTime() + 8*3600*1000);
+  const pad = (n) => String(n).padStart(2,"0");
+  return `${pht.getUTCFullYear()}-${pad(pht.getUTCMonth()+1)}-${pad(pht.getUTCDate())} ${pad(pht.getUTCHours())}:${pad(pht.getUTCMinutes())} PHT`;
+}
+
 function renderSources() {
   const m = state.models || { implemented: [], unavailable: [], registry: [] };
   const lines = [];
-  lines.push(`<b>Geographic data:</b> Municipal overlay is a generated Voronoi approximation from verified municipal centroids (NOT official administrative boundaries — visualization only). Basemap © OpenStreetMap contributors (ODbL). Representative points: Wikipedia / Philatlas / Open-Meteo geocoding cross-check (town centres).`);
-  lines.push(`<br><b>${m.implemented?.length || 0} eligible independent models implemented via Open-Meteo CC-BY 4.0 (non-commercial):</b>`);
+  lines.push(`<b>National temperature overlay:</b> ECMWF IFS (O1280 reduced-Gaussian, ~9 km global, WGS84 lon/lat) temperature_2m / temperature_2m_max / temperature_2m_min fields, rendered client-side via Open-Meteo weather-map-layer (MIT) from public S3 chunks; data © ECMWF via Open-Meteo, <a href="https://open-meteo.com/en/license" target="_blank" rel="noopener">CC BY 4.0</a>. Bilinear resampling on display only — native grid cells remain ~9 km; squares/seams visible at high zoom reflect model resolution, not stitching artifacts. Ocean cells are no-data (transparent). Times shown in Asia/Manila (UTC+8).`);
+  lines.push(`<br><b>Geographic data:</b> Zamboanga del Norte municipal overlay is a generated Voronoi approximation from verified municipal centroids (NOT official administrative boundaries — visualization only; "LGU View" discloses this). Basemap © OpenStreetMap contributors (ODbL). Representative points: Wikipedia / Philatlas / Open-Meteo geocoding cross-check (town centres).`);
+  lines.push(`<br><b>${m.implemented?.length || 0} eligible independent models for Zamboanga del Norte, implemented via Open-Meteo CC-BY 4.0 (non-commercial):</b>`);
   lines.push("<ul>");
   for (const im of (m.implemented || [])) lines.push(`<li><b>${im.shortLabel}</b> — ${im.centre} (~${im.nativeResKm} km)${im.aliasGroup ? ` [alias-group: ${im.aliasGroup}]` : ""}</li>`);
   lines.push("</ul>");
@@ -556,9 +797,12 @@ function renderSources() {
     for (const u of unavail) lines.push(`<li><b>${u.label}</b> <span class="muted">(${u.status})</span> — ${u.reason}</li>`);
     lines.push("</ul>");
   }
-  lines.push(`<div class="mono small">Open-Meteo terms verified 2026-10-23: free non-commercial API, CC-BY 4.0, &lt;10,000 calls/day, &lt;5,000/hour, &lt;600/minute. Evidence fixture: <code>docs/verification/open-meteo-models-2026-10-23.json</code>.</div>`);
+  lines.push(`<div class="mono small">Open-Meteo terms verified 2026-10-23: free non-commercial API, CC-BY 4.0, &lt;10,000 calls/day, &lt;5,000/hour, &lt;600/minute. Evidence fixtures: <code>docs/verification/open-meteo-models-2026-10-23.json</code>, <code>docs/verification/ecmwf-ifs-spatial-2026-10-23.json</code>.</div>`);
   $("#sourceBlock").innerHTML = lines.join("");
-  $(".map-attribution").innerHTML = `Municipal overlay: approximate (not official) · Basemap: OpenStreetMap`;
+  const attr = state.view === "national" && state.overlayReady
+    ? `National overlay: ECMWF IFS via Open-Meteo (CC BY 4.0), ~9 km · Municipal overlay (LGU view): approximate · Basemap: OpenStreetMap`
+    : `Municipal overlay: approximate (not official) · Basemap: OpenStreetMap`;
+  $(".map-attribution").innerHTML = attr;
 }
 
 async function renderBulletin() {

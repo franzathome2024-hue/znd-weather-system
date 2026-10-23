@@ -190,3 +190,8 @@ tr.missing td { color: var(--fg-dim); font-style: italic; }
 .maplibregl-ctrl-group button { background-color: var(--bg-2) !important; filter: invert(0.8); }
 .maplibregl-ctrl-attrib { background: rgba(0,0,0,0.5) !important; color: #ccc !important; font-size: 9px !important; }
 .maplibregl-ctrl-attrib a { color: #4fc3f7 !important; }
+
+/* National temperature overlay controls / legend additions */
+#overlayCtrl select { width: 100%; }
+.legend .small { font-size: 10.5px; line-height: 1.35; margin-top: 4px; color: var(--fg-dim); }
+.map-attribution { font-size: 10.5px; line-height: 1.4; }
