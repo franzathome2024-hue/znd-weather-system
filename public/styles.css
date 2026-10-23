@@ -140,12 +140,29 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: 
 .warn { background: var(--warn-bg); color: var(--warn-fg); padding: 6px 8px; font-size: 12px; border-radius: var(--radius); margin-top: 6px; border: 1px solid rgba(255,209,128,0.25); }
 
 .table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-dim); font-weight: 600; }
 td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
 tr.selected { background: rgba(79,195,247,0.10); }
 tr.missing td { color: var(--fg-dim); font-style: italic; }
+
+/* Shared column widths via <colgroup> + table-layout:fixed ensures header
+   and body columns line up pixel-perfectly at every viewport width. */
+.all-table col.lo-col { width: 17%; }
+.all-table col.hi-col { width: 17%; }
+.all-table col.models-col { width: 15%; }
+.all-table col.spread-col { width: 17%; }
+.model-table col.hi-col { width: 22%; }
+.model-table col.lo-col { width: 22%; }
+@media (max-width: 480px) {
+  .all-table, .model-table { font-size: 12px; }
+  th, td { padding: 5px 6px; }
+  .all-table col.lo-col { width: 18%; }
+  .all-table col.hi-col { width: 18%; }
+  .all-table col.models-col { width: 14%; }
+  .all-table col.spread-col { width: 18%; }
+}
 
 .big-temps { display: flex; gap: 18px; align-items: baseline; margin-bottom: 8px; }
 .big-temps .t { font-family: var(--mono); font-size: 32px; font-weight: 600; }
