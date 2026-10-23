@@ -1,0 +1,529 @@
+{
+  "fetchedAt": "2026-10-23T06:27:23Z",
+  "models": {
+    "pangu_ifs": {
+      "available": true,
+      "init_utc": "2026-10-22T12:00:00Z",
+      "init_file": "PANG_v100_IFS/2026/1022/PANG_v100_IFS_2026102212_f000_f240_06.nc",
+      "file_size_bytes": 2122897318,
+      "file_last_modified": "2026-10-22T20:22:50.000Z",
+      "units_source": "K",
+      "native_grid": {
+        "lat_range": [
+          90.0,
+          -90.0
+        ],
+        "lon_range": [
+          0.0,
+          359.75
+        ],
+        "dlat": 0.25,
+        "dlon": 0.25,
+        "loc_grid_points": [
+          {
+            "id": "dipolog",
+            "lat_idx": 326,
+            "lon_idx": 493,
+            "grid_lat": 8.5,
+            "grid_lon": 123.25
+          },
+          {
+            "id": "dapitan",
+            "lat_idx": 325,
+            "lon_idx": 494,
+            "grid_lat": 8.75,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "baliguian",
+            "lat_idx": 329,
+            "lon_idx": 489,
+            "grid_lat": 7.75,
+            "grid_lon": 122.25
+          },
+          {
+            "id": "godod",
+            "lat_idx": 328,
+            "lon_idx": 491,
+            "grid_lat": 8.0,
+            "grid_lon": 122.75
+          },
+          {
+            "id": "gutalac",
+            "lat_idx": 328,
+            "lon_idx": 490,
+            "grid_lat": 8.0,
+            "grid_lon": 122.5
+          },
+          {
+            "id": "jose-dalman",
+            "lat_idx": 326,
+            "lon_idx": 492,
+            "grid_lat": 8.5,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "kalawit",
+            "lat_idx": 328,
+            "lon_idx": 490,
+            "grid_lat": 8.0,
+            "grid_lon": 122.5
+          },
+          {
+            "id": "katipunan",
+            "lat_idx": 326,
+            "lon_idx": 493,
+            "grid_lat": 8.5,
+            "grid_lon": 123.25
+          },
+          {
+            "id": "la-libertad",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "labason",
+            "lat_idx": 328,
+            "lon_idx": 490,
+            "grid_lat": 8.0,
+            "grid_lon": 122.5
+          },
+          {
+            "id": "leon-postigo",
+            "lat_idx": 327,
+            "lon_idx": 492,
+            "grid_lat": 8.25,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "liloy",
+            "lat_idx": 328,
+            "lon_idx": 491,
+            "grid_lat": 8.0,
+            "grid_lon": 122.75
+          },
+          {
+            "id": "manukan",
+            "lat_idx": 326,
+            "lon_idx": 492,
+            "grid_lat": 8.5,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "mutia",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "pinan",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "polanco",
+            "lat_idx": 326,
+            "lon_idx": 493,
+            "grid_lat": 8.5,
+            "grid_lon": 123.25
+          },
+          {
+            "id": "roxas",
+            "lat_idx": 326,
+            "lon_idx": 493,
+            "grid_lat": 8.5,
+            "grid_lon": 123.25
+          },
+          {
+            "id": "rizal",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "salug",
+            "lat_idx": 328,
+            "lon_idx": 491,
+            "grid_lat": 8.0,
+            "grid_lon": 122.75
+          },
+          {
+            "id": "sergio-osmena",
+            "lat_idx": 327,
+            "lon_idx": 494,
+            "grid_lat": 8.25,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "siayan",
+            "lat_idx": 327,
+            "lon_idx": 492,
+            "grid_lat": 8.25,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "sibuco",
+            "lat_idx": 331,
+            "lon_idx": 488,
+            "grid_lat": 7.25,
+            "grid_lon": 122.0
+          },
+          {
+            "id": "sibutad",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "sindangan",
+            "lat_idx": 327,
+            "lon_idx": 492,
+            "grid_lat": 8.25,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "siocon",
+            "lat_idx": 329,
+            "lon_idx": 489,
+            "grid_lat": 7.75,
+            "grid_lon": 122.25
+          },
+          {
+            "id": "sirawai",
+            "lat_idx": 330,
+            "lon_idx": 489,
+            "grid_lat": 7.5,
+            "grid_lon": 122.25
+          },
+          {
+            "id": "tampilisan",
+            "lat_idx": 328,
+            "lon_idx": 491,
+            "grid_lat": 8.0,
+            "grid_lon": 122.75
+          }
+        ]
+      },
+      "leads_utc": [
+        "2026-10-22T12:00:00Z",
+        "2026-10-22T18:00:00Z",
+        "2026-10-23T00:00:00Z",
+        "2026-10-23T06:00:00Z",
+        "2026-10-23T12:00:00Z",
+        "2026-10-23T18:00:00Z",
+        "2026-10-24T00:00:00Z",
+        "2026-10-24T06:00:00Z",
+        "2026-10-24T12:00:00Z",
+        "2026-10-24T18:00:00Z",
+        "2026-10-25T00:00:00Z",
+        "2026-10-25T06:00:00Z",
+        "2026-10-25T12:00:00Z",
+        "2026-10-25T18:00:00Z",
+        "2026-10-26T00:00:00Z",
+        "2026-10-26T06:00:00Z",
+        "2026-10-26T12:00:00Z",
+        "2026-10-26T18:00:00Z",
+        "2026-10-27T00:00:00Z",
+        "2026-10-27T06:00:00Z",
+        "2026-10-27T12:00:00Z",
+        "2026-10-27T18:00:00Z",
+        "2026-10-28T00:00:00Z",
+        "2026-10-28T06:00:00Z",
+        "2026-10-28T12:00:00Z",
+        "2026-10-28T18:00:00Z",
+        "2026-10-29T00:00:00Z",
+        "2026-10-29T06:00:00Z",
+        "2026-10-29T12:00:00Z",
+        "2026-10-29T18:00:00Z",
+        "2026-10-30T00:00:00Z",
+        "2026-10-30T06:00:00Z",
+        "2026-10-30T12:00:00Z",
+        "2026-10-30T18:00:00Z",
+        "2026-10-31T00:00:00Z",
+        "2026-10-31T06:00:00Z",
+        "2026-10-31T12:00:00Z",
+        "2026-10-31T18:00:00Z",
+        "2026-11-01T00:00:00Z",
+        "2026-11-01T06:00:00Z",
+        "2026-11-01T12:00:00Z"
+      ],
+      "attribution": "Pangu-Weather (Bi et al., Nature 2023) via NOAA/CIRA AIWP archive (Radford et al. 2025, BAMS). Public S3: noaa-oar-mlwp-data.s3.amazonaws.com.",
+      "license": "CC BY-NC-SA 4.0 (non-commercial; NOAA/CIRA AIWP redistribution)",
+      "shortLabel": "Pangu-Weather IFS",
+      "nativeResKm": 28,
+      "consensusEligible": false,
+      "aliasGroup": "pangu_ifs",
+      "exclusionReason": "Non-commercial weights (BY-NC-SA 4.0); surfaced for transparency/attribution but excluded from the independent-consensus median so the system can remain deployable into non-commercial and public-facing contexts without ambiguity.",
+      "retrievedAt": "2026-10-23T06:27:23Z"
+    },
+    "graphcast_ifs": {
+      "available": true,
+      "init_utc": "2026-10-22T12:00:00Z",
+      "init_file": "GRAP_v100_IFS/2026/1022/GRAP_v100_IFS_2026102212_f000_f240_06.nc",
+      "file_size_bytes": 2870416517,
+      "file_last_modified": "2026-10-22T20:23:12.000Z",
+      "units_source": "K",
+      "native_grid": {
+        "lat_range": [
+          90.0,
+          -90.0
+        ],
+        "lon_range": [
+          0.0,
+          359.75
+        ],
+        "dlat": 0.25,
+        "dlon": 0.25,
+        "loc_grid_points": [
+          {
+            "id": "dipolog",
+            "lat_idx": 326,
+            "lon_idx": 493,
+            "grid_lat": 8.5,
+            "grid_lon": 123.25
+          },
+          {
+            "id": "dapitan",
+            "lat_idx": 325,
+            "lon_idx": 494,
+            "grid_lat": 8.75,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "baliguian",
+            "lat_idx": 329,
+            "lon_idx": 489,
+            "grid_lat": 7.75,
+            "grid_lon": 122.25
+          },
+          {
+            "id": "godod",
+            "lat_idx": 328,
+            "lon_idx": 491,
+            "grid_lat": 8.0,
+            "grid_lon": 122.75
+          },
+          {
+            "id": "gutalac",
+            "lat_idx": 328,
+            "lon_idx": 490,
+            "grid_lat": 8.0,
+            "grid_lon": 122.5
+          },
+          {
+            "id": "jose-dalman",
+            "lat_idx": 326,
+            "lon_idx": 492,
+            "grid_lat": 8.5,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "kalawit",
+            "lat_idx": 328,
+            "lon_idx": 490,
+            "grid_lat": 8.0,
+            "grid_lon": 122.5
+          },
+          {
+            "id": "katipunan",
+            "lat_idx": 326,
+            "lon_idx": 493,
+            "grid_lat": 8.5,
+            "grid_lon": 123.25
+          },
+          {
+            "id": "la-libertad",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "labason",
+            "lat_idx": 328,
+            "lon_idx": 490,
+            "grid_lat": 8.0,
+            "grid_lon": 122.5
+          },
+          {
+            "id": "leon-postigo",
+            "lat_idx": 327,
+            "lon_idx": 492,
+            "grid_lat": 8.25,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "liloy",
+            "lat_idx": 328,
+            "lon_idx": 491,
+            "grid_lat": 8.0,
+            "grid_lon": 122.75
+          },
+          {
+            "id": "manukan",
+            "lat_idx": 326,
+            "lon_idx": 492,
+            "grid_lat": 8.5,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "mutia",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "pinan",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "polanco",
+            "lat_idx": 326,
+            "lon_idx": 493,
+            "grid_lat": 8.5,
+            "grid_lon": 123.25
+          },
+          {
+            "id": "roxas",
+            "lat_idx": 326,
+            "lon_idx": 493,
+            "grid_lat": 8.5,
+            "grid_lon": 123.25
+          },
+          {
+            "id": "rizal",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "salug",
+            "lat_idx": 328,
+            "lon_idx": 491,
+            "grid_lat": 8.0,
+            "grid_lon": 122.75
+          },
+          {
+            "id": "sergio-osmena",
+            "lat_idx": 327,
+            "lon_idx": 494,
+            "grid_lat": 8.25,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "siayan",
+            "lat_idx": 327,
+            "lon_idx": 492,
+            "grid_lat": 8.25,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "sibuco",
+            "lat_idx": 331,
+            "lon_idx": 488,
+            "grid_lat": 7.25,
+            "grid_lon": 122.0
+          },
+          {
+            "id": "sibutad",
+            "lat_idx": 326,
+            "lon_idx": 494,
+            "grid_lat": 8.5,
+            "grid_lon": 123.5
+          },
+          {
+            "id": "sindangan",
+            "lat_idx": 327,
+            "lon_idx": 492,
+            "grid_lat": 8.25,
+            "grid_lon": 123.0
+          },
+          {
+            "id": "siocon",
+            "lat_idx": 329,
+            "lon_idx": 489,
+            "grid_lat": 7.75,
+            "grid_lon": 122.25
+          },
+          {
+            "id": "sirawai",
+            "lat_idx": 330,
+            "lon_idx": 489,
+            "grid_lat": 7.5,
+            "grid_lon": 122.25
+          },
+          {
+            "id": "tampilisan",
+            "lat_idx": 328,
+            "lon_idx": 491,
+            "grid_lat": 8.0,
+            "grid_lon": 122.75
+          }
+        ]
+      },
+      "leads_utc": [
+        "2026-10-22T12:00:00Z",
+        "2026-10-22T18:00:00Z",
+        "2026-10-23T00:00:00Z",
+        "2026-10-23T06:00:00Z",
+        "2026-10-23T12:00:00Z",
+        "2026-10-23T18:00:00Z",
+        "2026-10-24T00:00:00Z",
+        "2026-10-24T06:00:00Z",
+        "2026-10-24T12:00:00Z",
+        "2026-10-24T18:00:00Z",
+        "2026-10-25T00:00:00Z",
+        "2026-10-25T06:00:00Z",
+        "2026-10-25T12:00:00Z",
+        "2026-10-25T18:00:00Z",
+        "2026-10-26T00:00:00Z",
+        "2026-10-26T06:00:00Z",
+        "2026-10-26T12:00:00Z",
+        "2026-10-26T18:00:00Z",
+        "2026-10-27T00:00:00Z",
+        "2026-10-27T06:00:00Z",
+        "2026-10-27T12:00:00Z",
+        "2026-10-27T18:00:00Z",
+        "2026-10-28T00:00:00Z",
+        "2026-10-28T06:00:00Z",
+        "2026-10-28T12:00:00Z",
+        "2026-10-28T18:00:00Z",
+        "2026-10-29T00:00:00Z",
+        "2026-10-29T06:00:00Z",
+        "2026-10-29T12:00:00Z",
+        "2026-10-29T18:00:00Z",
+        "2026-10-30T00:00:00Z",
+        "2026-10-30T06:00:00Z",
+        "2026-10-30T12:00:00Z",
+        "2026-10-30T18:00:00Z",
+        "2026-10-31T00:00:00Z",
+        "2026-10-31T06:00:00Z",
+        "2026-10-31T12:00:00Z",
+        "2026-10-31T18:00:00Z",
+        "2026-11-01T00:00:00Z",
+        "2026-11-01T06:00:00Z",
+        "2026-11-01T12:00:00Z"
+      ],
+      "attribution": "GraphCast Operational (Lam et al., Science 2023; Google DeepMind) via NOAA/CIRA AIWP archive (Radford et al. 2025, BAMS). Public S3: noaa-oar-mlwp-data.s3.amazonaws.com.",
+      "license": "CC BY-NC-SA 4.0 (non-commercial per checkpoint metadata; NOAA/CIRA AIWP redistribution)",
+      "shortLabel": "GraphCast IFS",
+      "nativeResKm": 28,
+      "consensusEligible": false,
+      "aliasGroup": "graphcast_ifs",
+      "exclusionReason": "Non-commercial weights (BY-NC-SA 4.0); surfaced for transparency/attribution but excluded from the independent-consensus median.",
+      "retrievedAt": "2026-10-23T06:27:23Z"
+    }
+  }
+}

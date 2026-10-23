@@ -592,11 +592,18 @@ function renderLocDetail() {
   for (const m of (state.models?.implemented || [])) {
     const tmax = d.tmax.valuesByModel?.[m.id];
     const tmin = d.tmin.valuesByModel?.[m.id];
-    // Mark dropped aliases
+    // Mark dropped aliases and non-consensus (e.g. non-commercial AIWP) models
     const droppedHi = d.dropped_duplicates?.some((x) => x.modelId === m.id && x.date === d.date);
+    const nonConsensus = m.consensusEligible === false;
+    const isAiwp = m.source === "aiwp_static_extract";
     const tr = document.createElement("tr");
     if (droppedHi) tr.classList.add("deduped");
-    tr.innerHTML = `<td>${m.shortLabel}${droppedHi?' <span class="muted small">(alias)</span>':''}</td>
+    if (nonConsensus) tr.classList.add("non-consensus");
+    const badge = droppedHi ? '<span class="muted small">(alias)</span>'
+                : isAiwp ? '<span class="badge aiwp" title="Pre-processed extract from NOAA/CIRA AIWP public S3 (Pangu/GraphCast IFS). Non-commercial weights; not included in consensus median.">AI ref · non-commercial</span>'
+                : nonConsensus ? '<span class="muted small">(excluded)</span>'
+                : "";
+    tr.innerHTML = `<td>${m.shortLabel}${badge?' '+badge:''}</td>
       <td class="num ${tmax==null?'null':''}">${tmax!=null?tmax.toFixed(1):"—"}</td>
       <td class="num ${tmin==null?'null':''}">${tmin!=null?tmin.toFixed(1):"—"}</td>`;
     tbody.appendChild(tr);

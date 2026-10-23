@@ -305,7 +305,77 @@ export const MODEL_REGISTRY = [
     consensusEligible: false,
     exclusionReason: "Open-Meteo BOM feed currently suspended (BOM platform upgrade), returns all-null daily values at Dipolog. Direct BOM access requires registration/subscription; deferred past v0.1 to stay within authorized free-data constraints.",
   },
-  // --- 11. MULTI-GLOBAL ---
+  // --- 14. GRAPHCAST IFS (AIWP static extract) ---
+  //   NOTE: kept with availabilityStatus = "static_extract" so it does NOT
+  //   get added to MODEL_API_IDS (which are sent to Open-Meteo). It is
+  //   surfaced separately by src/aiwp.js after the Open-Meteo pipeline runs.
+  {
+    targetLabel: "GRAPHCAST IFS (NOAA/CIRA AIWP)",
+    provider: "NOAA/CIRA AIWP public S3 archive (ECMWF IFS initialisation, Google DeepMind GraphCast)",
+    endpoint: "https://noaa-oar-mlwp-data.s3.amazonaws.com/GRAP_v100_IFS/  (pre-processed into /public/data/aiwp-t2-zamboanga.json at build time)",
+    requestedModelId: "graphcast_ifs",
+    verifiedProduct: "GraphCast Operational (Lam et al. 2023, Science) 0.25° (~28 km) 6-hourly out to +240 h, initialised from ECMWF IFS, served by the NOAA/CIRA AIWP reforecast archive. Loaded via HTTP Range reads against the public NetCDF (2.87 GB per init) in a pre-build step that extracts nearest-grid-point 2-m temperature for the 27 ZN LGUs and aggregates to PHT-calendar-day tmax/tmin. See scripts/fetch-aiwp.py.",
+    productType: "ai_deterministic",
+    nativeResolution: "≈28 km (0.25°)",
+    geographicCoverage: "Global (covers Philippines)",
+    availabilityStatus: "static_extract",
+    evidence: {
+      verificationDate: "2026-10-23",
+      pointsTested: "All 27 Zamboanga del Norte LGUs, plus Manila/Cebu/Davao spot checks",
+      sampleDipologTmaxFirst3: [null, 28.74, 27.68],
+      sampleDipologTminFirst3: [null, 25.70, 25.83],
+      unitsVerified: "Kelvin (K) per t2 attrs; converted to °C in preprocessing",
+      coordsVerified: "Lat N→S 90..-90 step 0.25°, lon 0..359.75 step 0.25°, WGS84",
+      leadTimesVerified: "0..240 h, step 6 h",
+      initCadenceVerified: "00Z, 12Z daily; last observed 2026-10-22T12Z (age ~10h at fetch)",
+      fileNamingConvention: "GRAP_v100_IFS/YYYY/mmdd/GRAP_v100_IFS_YYYYmmddhh_f000_f240_06.nc",
+      accessMethod: "Anonymous HTTPS, HTTP Range requests, no AWS credentials",
+      citation: "Radford et al. 2025, BAMS, https://doi.org/10.1175/BAMS-D-24-0057.1",
+      fixturePath: "docs/verification/aiwp-fetch-2026-10-23.json",
+      staticExtract: "public/data/aiwp-t2-zamboanga.json",
+    },
+    lastVerifiedAt: "2026-10-23T07:00:00Z",
+    lastSuccessfulRun: "2026-10-22T12:00:00Z",
+    license: "CC BY-NC-SA 4.0 (GraphCast checkpoint weights metadata as currently packaged on the AIWP archive; non-commercial use only). NOAA archive data redistribution permitted with citation. Surface in UI as non-commercial attribution only.",
+    attributionRequirements: "Attribute 'Google DeepMind GraphCast' and 'NOAA/CIRA AIWP archive (Radford et al. 2025)'. Citation URL required. Do not claim operational real-time status.",
+    consensusEligible: false,
+    aliasGroup: "graphcast_ifs",
+    exclusionReason: "Non-commercial weights; surfaced as a labelled, non-consensus reference trace only so the system remains safely deployable into non-commercial and public-facing contexts without licence ambiguity. Loaded from a build-time static extract, not from the live Open-Meteo API.",
+  },
+  // --- 15. PANGU IFS (AIWP static extract) ---
+  {
+    targetLabel: "PANGU IFS (NOAA/CIRA AIWP)",
+    provider: "NOAA/CIRA AIWP public S3 archive (ECMWF IFS initialisation, Huawei Cloud Pangu-Weather)",
+    endpoint: "https://noaa-oar-mlwp-data.s3.amazonaws.com/PANG_v100_IFS/  (pre-processed into /public/data/aiwp-t2-zamboanga.json at build time)",
+    requestedModelId: "pangu_ifs",
+    verifiedProduct: "Pangu-Weather (Bi et al. 2023, Nature) 0.25° (~28 km) 6-hourly out to +240 h, initialised from ECMWF IFS, served by the NOAA/CIRA AIWP archive. Loaded via HTTP Range reads against the public NetCDF (2.12 GB per init) in a pre-build step. See scripts/fetch-aiwp.py.",
+    productType: "ai_deterministic",
+    nativeResolution: "≈28 km (0.25°)",
+    geographicCoverage: "Global (covers Philippines)",
+    availabilityStatus: "static_extract",
+    evidence: {
+      verificationDate: "2026-10-23",
+      pointsTested: "All 27 Zamboanga del Norte LGUs",
+      sampleDipologTmaxFirst3: [26.44, 29.02, 28.52],
+      sampleDipologTminFirst3: [26.44, 26.45, 26.45],
+      unitsVerified: "Kelvin (K) per t2 attrs; converted to °C in preprocessing",
+      leadTimesVerified: "0..240 h, step 6 h",
+      initCadenceVerified: "00Z, 12Z daily; last observed 2026-10-22T12Z",
+      fileNamingConvention: "PANG_v100_IFS/YYYY/mmdd/PANG_v100_IFS_YYYYmmddhh_f000_f240_06.nc",
+      accessMethod: "Anonymous HTTPS, HTTP Range requests, no AWS credentials",
+      citation: "Radford et al. 2025, BAMS, https://doi.org/10.1175/BAMS-D-24-0057.1 ; Bi et al. 2023, Nature",
+      fixturePath: "docs/verification/aiwp-fetch-2026-10-23.json",
+      staticExtract: "public/data/aiwp-t2-zamboanga.json",
+    },
+    lastVerifiedAt: "2026-10-23T07:00:00Z",
+    lastSuccessfulRun: "2026-10-22T12:00:00Z",
+    license: "CC BY-NC-SA 4.0 (Pangu-Weather weights: commercial use explicitly forbidden by authors). NOAA archive redistribution permitted with citation.",
+    attributionRequirements: "Attribute 'Huawei Cloud Pangu-Weather' and 'NOAA/CIRA AIWP archive (Radford et al. 2025)'. Citation URL required. Do not claim operational real-time status.",
+    consensusEligible: false,
+    aliasGroup: "pangu_ifs",
+    exclusionReason: "Non-commercial weights (BY-NC-SA 4.0); surfaced as a labelled, non-consensus reference trace only. Loaded from a build-time static extract.",
+  },
+  // --- 16. MULTI-GLOBAL ---
   {
     targetLabel: "MULTI-GLOBAL",
     provider: "Open-Meteo (internal blend alias, not an independent centre)",
@@ -448,15 +518,29 @@ export const ALIAS_GROUPS = {
   meteo_france_arpege: ["arpege_world"],
   eccc_gem: ["gem_global"],
   jma_gsm: ["jma_gsm"],
+  // AIWP models (non-commercial, excluded from consensus)
+  pangu_ifs: ["pangu_ifs"],
+  graphcast_ifs: ["graphcast_ifs"],
   // knmi_seamless was tested and returned byte-identical ECMWF IFS output
   // (KNMI Seamless blends ECMWF). It is NOT in our eligible set because it
   // is a blend, not an independent centre. It is not added to the registry
   // as a configured feed.
 };
 
+// AIWP model IDs (NOAA/CIRA Pangu + GraphCast, IFS-initialised)
+export const AIWP_MODEL_IDS = ["pangu_ifs", "graphcast_ifs"];
+// If the static AIWP extract is older than this, mark it stale. Runs are
+// typically updated ~8 hours after each 00/12Z init on NOAA S3.
+export const AIWP_STALE_HOURS = 36;
+
 // Lists for the pipeline / UI
+// AIWP Pangu + GraphCast (availabilityStatus = "static_extract") are included
+// here so the UI can render their traces and /api/models reports them as
+// implemented, but they are filtered OUT of MODEL_API_IDS (the list sent to
+// Open-Meteo) and their consensusEligible=false keeps aggregate.js from
+// adding them to the median.
 export const IMPLEMENTED_MODELS = MODEL_REGISTRY
-  .filter((m) => m.availabilityStatus === "verified" && m.consensusEligible)
+  .filter((m) => (m.availabilityStatus === "verified" && m.consensusEligible) || m.availabilityStatus === "static_extract")
   .map((m) => ({
     id: m.requestedModelId,
     apiId: m.requestedModelId,
@@ -469,17 +553,27 @@ export const IMPLEMENTED_MODELS = MODEL_REGISTRY
     attribution: m.attributionRequirements,
     aliasGroup: m.aliasGroup,
     license: m.license,
+    consensusEligible: m.consensusEligible,
+    exclusionReason: m.exclusionReason,
+    source: m.availabilityStatus === "static_extract" ? "aiwp_static_extract" : "open-meteo",
     evidence: m.evidence,
   }));
 
-// The API uses model IDs in the order defined here.
-export const MODEL_API_IDS = IMPLEMENTED_MODELS.map((m) => m.apiId);
+// MODEL_API_IDS is the list sent to the Open-Meteo multi-model API — only
+// Open-Meteo-sourced feeds, not the AIWP static extracts.
+export const MODEL_API_IDS = IMPLEMENTED_MODELS
+  .filter((m) => m.source === "open-meteo")
+  .map((m) => m.apiId);
 
 // Legacy alias: MODELS is used throughout the older v0.1 pipeline code.
 export const MODELS = IMPLEMENTED_MODELS;
 
+// Models that are NOT currently usable (failed verification / no free feed
+// / licence incompatible / etc). `static_extract` entries (AIWP) are
+// reported in IMPLEMENTED_MODELS with source="aiwp_static_extract" rather
+// than in UNAVAILABLE_MODELS, because they ARE served.
 export const UNAVAILABLE_MODELS = MODEL_REGISTRY
-  .filter((m) => m.availabilityStatus !== "verified")
+  .filter((m) => m.availabilityStatus !== "verified" && m.availabilityStatus !== "static_extract")
   .map((m) => ({
     label: m.targetLabel,
     reason: `${m.availabilityStatus}: ${m.exclusionReason || ""}`,
