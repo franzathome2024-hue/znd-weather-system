@@ -1,0 +1,365 @@
+import { ResolvedClippingOptions } from './utils/clipping';
+import { FileReaderConfig, WeatherMapLayerFileReader } from './om-file-reader';
+export interface OmProtocolInstance {
+    omFileReader: WeatherMapLayerFileReader;
+    /**
+     * The domain list of the settings the protocol was last called with, so
+     * lookups outside the tile pipeline (`getValueFromLatLong`) resolve the same
+     * domains as the tiles without the caller passing the settings again.
+     */
+    domainOptions: Domain[];
+    stateByKey: Map<string, OmUrlState>;
+}
+export interface DataIdentityOptions {
+    domain: Domain;
+    variable: string;
+    bounds: Bounds | undefined;
+    /**
+     * Length in hours of the file's time step, which rules turning
+     * accumulations into rates divide by: the `delta_time_hours` parameter of
+     * the om URL. The host application sets it from the run's valid times;
+     * the protocol only passes it on to the reader.
+     */
+    timeStepHours?: number;
+}
+export type InterpolationMethod = 'nearest' | 'linear' | 'cubic' | 'monotone';
+/** Shape drawn for directions: a plain arrow, or station-model wind barbs. */
+export type ArrowStyle = 'arrow' | 'barb';
+export type TileSize = 64 | 128 | 256 | 512 | 1024 | 2048;
+export interface RenderOptions {
+    tileSize: TileSize;
+    interpolation: InterpolationMethod;
+    colorBlend: boolean;
+    drawGrid: boolean;
+    drawArrows: boolean;
+    arrowStyle: ArrowStyle;
+    drawContours: boolean;
+    intervals: number[];
+    colorScale: RenderableColorScale;
+}
+export interface ParsedUrlComponents {
+    baseUrl: string;
+    params: URLSearchParams;
+    fileAndVariableKey: string;
+    tileIndex: TileIndex | null;
+}
+export interface ParsedRequest {
+    baseUrl: string;
+    fileAndVariableKey: string;
+    tileIndex: TileIndex | null;
+    renderOptions: RenderOptions;
+    dataOptions: DataIdentityOptions;
+    clippingOptions: ResolvedClippingOptions | undefined;
+}
+export interface OmUrlState {
+    dataOptions: DataIdentityOptions;
+    ranges: DimensionRange[];
+    omFileUrl: string;
+    data: Data | null;
+    dataPromise: Promise<Data> | null;
+    lastAccess: number;
+}
+/**
+ * Custom resolver function type.
+ * Receives parsed URL components and settings, returns resolved identity and options.
+ */
+export type RequestResolver = (urlComponents: ParsedUrlComponents, settings: OmProtocolSettings) => {
+    dataOptions: DataIdentityOptions;
+    renderOptions: RenderOptions;
+};
+export type PostReadCallback = ((omFileReader: WeatherMapLayerFileReader, data: Data, state: OmUrlState) => void) | undefined;
+export interface OmProtocolSettings {
+    fileReaderConfig: FileReaderConfig;
+    colorScales: ColorScales;
+    domainOptions: Domain[];
+    clippingOptions: ClippingOptions;
+    /**
+     * Max states that keep data loaded. Should be as low as possible, but at
+     * least the number of variables displayed simultaneously (times two while
+     * cross-fading between timesteps). @default 2
+     */
+    maxStatesWithData?: number;
+    /**
+     * Optional custom resolver for URL settings.
+     * Receives parsed URL components and returns resolved settings.
+     * Default implementation uses standard query param parsing.
+     */
+    resolveRequest: RequestResolver;
+    postReadCallback: PostReadCallback;
+}
+export interface Data {
+    values: Float32Array | undefined;
+    directions: Float32Array | undefined;
+    scaleFactor?: number;
+}
+export type TileJSON = {
+    tilejson: '3.0.0';
+    tiles: Array<string>;
+    name?: string;
+    description?: string;
+    version?: string;
+    attribution?: string;
+    scheme?: string;
+    minzoom: number;
+    maxzoom: number;
+    bounds?: Array<number>;
+    center?: Array<number>;
+    fillzoom?: number;
+};
+export type TileIndex = {
+    z: number;
+    x: number;
+    y: number;
+};
+/**
+ * One concrete domain's data as the worker renders it. A plain request has a
+ * single layer; a seamless request carries one per active sub-domain, ordered
+ * finest-first.
+ */
+export interface LayerRenderData {
+    domain: Domain;
+    data: Data;
+    ranges: DimensionRange[];
+}
+export interface TileRequest {
+    type: 'getArrayBuffer' | 'getImage' | 'cancel';
+    key: string;
+    /** The domains the tile is rendered from, finest-first; a plain request has one. */
+    layers: LayerRenderData[];
+    tileIndex: TileIndex;
+    renderOptions: RenderOptions;
+    clippingOptions: ResolvedClippingOptions | undefined;
+    signal?: AbortSignal;
+}
+export type WorkerRequest = TileRequest;
+export type TileResponse = ImageBitmap | ArrayBuffer;
+export interface TileResult {
+    data?: TileResponse;
+    cancelled: boolean;
+}
+export type TilePromise = Promise<TileResult>;
+export type WorkerResponse = {
+    type: 'returnImage' | 'returnArrayBuffer' | 'cancelled';
+    tile: TileResponse;
+    key: string;
+};
+export type RGB = [number, number, number];
+export type RGBA = [number, number, number, number];
+export type ColorDefinition = RGB[] | {
+    light: RGB[];
+    dark: RGB[];
+};
+export type OpacityFn = (px: number, dark?: boolean) => number;
+export type OpacityDefinition = number | OpacityFn;
+export interface BreakpointColorScale {
+    type: 'breakpoint';
+    unit: string;
+    breakpoints: number[];
+    colors: RGBA[] | {
+        light: RGBA[];
+        dark: RGBA[];
+    };
+}
+export interface ResolvedBreakpointColorScale {
+    type: 'breakpoint';
+    unit: string;
+    breakpoints: number[];
+    colors: RGBA[];
+}
+export interface RGBAColorScale {
+    type: 'rgba';
+    unit: string;
+    min: number;
+    max: number;
+    colors: RGBA[];
+}
+export type ColorScale = RGBAColorScale | BreakpointColorScale;
+export type RenderableColorScale = RGBAColorScale | ResolvedBreakpointColorScale;
+export type ColorScales = Record<string, ColorScale>;
+interface BaseGridData {
+    nx: number;
+    ny: number;
+    zoom?: number;
+}
+export type GridData = RegularGridData | AnyProjectionGridData | GaussianGridData;
+export interface GaussianGridData extends BaseGridData {
+    type: 'gaussian';
+    gaussianGridLatitudeLines: number;
+}
+export type RegularGridData = RegularGridFromOrigin | RegularGridFromBounds;
+export interface RegularGridFromOrigin extends BaseGridData {
+    type: 'regular';
+    lonMin: number;
+    latMin: number;
+    dx: number;
+    dy: number;
+    latitude?: never;
+    longitude?: never;
+}
+export interface RegularGridFromBounds extends BaseGridData {
+    type: 'regular';
+    latitude: [min: number, max: number];
+    longitude: [min: number, max: number];
+    lonMin?: never;
+    latMin?: never;
+    dx?: never;
+    dy?: never;
+}
+export type AnyProjectionGridData = ProjectionGridFromBounds | ProjectionGridFromGeographicOrigin | ProjectionGridFromProjectedOrigin;
+export interface ProjectionGridFromBounds extends BaseGridData {
+    type: 'projectedFromBounds';
+    projection: ProjectionData;
+    nx: number;
+    ny: number;
+    latitude: [min: number, max: number];
+    longitude: [min: number, max: number];
+}
+export interface ProjectionGridFromGeographicOrigin extends BaseGridData {
+    type: 'projectedFromGeographicOrigin';
+    projection: ProjectionData;
+    nx: number;
+    ny: number;
+    dx: number;
+    dy: number;
+    latitude: number;
+    longitude: number;
+}
+export interface ProjectionGridFromProjectedOrigin extends BaseGridData {
+    type: 'projectedFromProjectedOrigin';
+    projection: ProjectionData;
+    nx: number;
+    ny: number;
+    dx: number;
+    dy: number;
+    latitudeProjectionOrigin: number;
+    longitudeProjectionOrigin: number;
+}
+export type ProjectionData = StereographicProjectionData | RotatedLatLonProjectionData | LCCProjectionData | LAEAProjectionData;
+export interface StereographicProjectionData {
+    name: 'StereographicProjection';
+    latitude: number;
+    longitude: number;
+    radius?: number;
+}
+export interface RotatedLatLonProjectionData {
+    name: 'RotatedLatLonProjection';
+    rotatedLat: number;
+    rotatedLon: number;
+}
+export interface LCCProjectionData {
+    name: 'LambertConformalConicProjection';
+    λ0: number;
+    ϕ0: number;
+    ϕ1: number;
+    ϕ2: number;
+    radius?: number;
+}
+export interface LAEAProjectionData {
+    name: 'LambertAzimuthalEqualAreaProjection';
+    λ0: number;
+    ϕ1: number;
+    radius: number;
+}
+export interface Domain {
+    value: string;
+    label?: string;
+    grid: GridData;
+    time_interval: ModelDt;
+    model_interval: ModelUpdateInterval;
+}
+export type ModelDt = '15_minute' | 'hourly' | '3_hourly' | '6_hourly' | '12_hourly' | 'daily' | 'weekly_on_monday' | 'monthly';
+export type ModelUpdateInterval = 'hourly' | '3_hourly' | '6_hourly' | '12_hourly' | 'daily' | 'monthly';
+/** A single layer within a seamless domain, referencing a concrete grid-based domain. */
+export interface SeamlessLayer {
+    /** The `value` of a concrete `Domain` entry to use for this layer. */
+    domainValue: string;
+    /** This layer is only used when the map zoom level is >= minZoom. */
+    minZoom: number;
+    /**
+     * Maximum lead time in hours that this layer's model produces forecast data for.
+     * When the requested timestep exceeds this horizon the layer is skipped entirely,
+     * falling through to the next coarser layer.
+     */
+    maxForecastHours?: number;
+}
+/**
+ * A virtual domain composed of several concrete domains. At any point the
+ * finest layer that is active at the current zoom and has data there is shown,
+ * so the map switches to a finer model where one exists and falls back to the
+ * coarser one elsewhere.
+ *
+ * `layers` are ordered finest-first; the last one is the base layer: the
+ * coarsest, with `minZoom: 0`, covering the composite's whole extent (global
+ * or regional). It stands in for the composite wherever a single concrete
+ * domain is needed (metadata, TileJSON bounds, initial map position): the
+ * composite's `grid` is that layer's grid, and it is requested at that layer's
+ * run and time steps, so `time_interval` and `model_interval` are that
+ * layer's too.
+ */
+export interface SeamlessDomain extends Domain {
+    type: 'seamless';
+    layers: SeamlessLayer[];
+}
+export interface DomainGroups {
+    [key: string]: Domain[];
+}
+export type Bounds = [
+    minimumLongitude: number,
+    minimumLatitude: number,
+    maximumLongitude: number,
+    maximumLatitude: number
+];
+export interface Center {
+    lng: number;
+    lat: number;
+}
+export interface DimensionRange {
+    start: number;
+    end: number;
+}
+export interface DomainMetaDataJson {
+    completed: boolean;
+    last_modified_time: string;
+    reference_time: string;
+    valid_times: string[];
+    variables: string[];
+}
+export type ZoomLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+export type GeoJsonPosition = [number, number] | [number, number, number] | number[];
+export type GeoJsonGeometry = {
+    type: 'Point';
+    coordinates: GeoJsonPosition;
+} | {
+    type: 'MultiPoint';
+    coordinates: GeoJsonPosition[];
+} | {
+    type: 'LineString';
+    coordinates: GeoJsonPosition[];
+} | {
+    type: 'MultiLineString';
+    coordinates: GeoJsonPosition[][];
+} | {
+    type: 'Polygon';
+    coordinates: GeoJsonPosition[][];
+} | {
+    type: 'MultiPolygon';
+    coordinates: GeoJsonPosition[][][];
+} | {
+    type: 'GeometryCollection';
+    geometries: GeoJsonGeometry[];
+};
+export type GeoJsonFeature = {
+    type: 'Feature';
+    geometry: GeoJsonGeometry | null;
+    properties?: Record<string, unknown> | null;
+};
+export type GeoJson = GeoJsonGeometry | GeoJsonFeature | {
+    type: 'FeatureCollection';
+    features: GeoJsonFeature[];
+};
+export type ClippingOptions = {
+    geojson?: GeoJson;
+    bounds?: Bounds;
+    fillRule?: 'nonzero' | 'evenodd';
+} | undefined;
+export {};

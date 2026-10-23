@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>ZND Weather v0.1 — Zamboanga del Norte Multi-Model Forecast</title>
+<title>ZND Weather v0.1 — Zamboanga del Norte + Philippines Multi-Model Forecast</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E🌦️%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/vendor/maplibre-gl.css">
@@ -12,7 +12,7 @@
 <body>
 <header class="topbar">
   <div class="brand">
-    <span class="brand-kicker">ZAMBOANGA DEL NORTE · MULTI-MODEL CONSENSUS</span>
+    <span class="brand-kicker">PHILIPPINES · MULTI-MODEL CONSENSUS + ECMWF NATIONAL OVERLAY</span>
     <h1>Weather <span class="muted">v0.1</span></h1>
   </div>
   <div class="meta">
@@ -24,6 +24,13 @@
 <main class="grid">
   <section class="panel controls">
     <div class="ctrl">
+      <label for="mapViewSelect">Map view</label>
+      <select id="mapViewSelect">
+        <option value="national">National temperature (ECMWF)</option>
+        <option value="zamboanga">Zamboanga del Norte LGUs</option>
+      </select>
+    </div>
+    <div class="ctrl">
       <label for="dateSelect">Forecast date (Philippine Time, Asia/Manila)</label>
       <select id="dateSelect"></select>
     </div>
@@ -34,6 +41,11 @@
         <option value="tmin">Daily LOW (Tmin)</option>
         <option value="agreement">Model agreement (spread, °C)</option>
       </select>
+    </div>
+    <div class="ctrl" id="overlayCtrl" hidden>
+      <label for="overlayTimeSelect">National overlay time</label>
+      <select id="overlayTimeSelect"></select>
+      <div class="small muted" id="overlayMeta"></div>
     </div>
     <div class="ctrl">
       <label for="locSearch">Location</label>
@@ -47,6 +59,7 @@
     <div id="feedCounts" class="small muted mono"></div>
     <div id="warnStale" class="warn hidden">⚠ Forecast is stale — background refresh in progress.</div>
     <div id="warnErrors" class="warn hidden"></div>
+    <div id="warnOverlay" class="warn hidden"></div>
   </section>
 
   <section class="panel map-panel">
@@ -99,6 +112,7 @@
 </main>
 
 <script src="/vendor/maplibre-gl.js"></script>
+<script type="module" src="/app-om.js"></script>
 <script src="/app.js" defer></script>
 </body>
 </html>

@@ -354,14 +354,106 @@ At the time of this commit: core pipeline/cache logic and frontend are **impleme
 and **tested**; wrangler bindings/cron are **configured**; production is **not
 deployed** and **not prod-verified** in this session.
 
-## 12. License
+## 12. Nationwide ECMWF temperature overlay (added 2026-10-23)
+
+In addition to the per-LGU point consensus, the dashboard now ships a **seamless
+Philippines-wide temperature overlay** ("National temperature" view, the default on
+load). This is a separate, geographically aligned raster layer driven directly from
+ECMWF IFS numerical-weather-prediction output — not an interpolation of the 27 LGU
+consensus points.
+
+**Data source (verified 2026-10-23):** ECMWF IFS O1280 reduced-Gaussian grid (~9 km
+global resolution), WGS84 (EPSG:4326), served as Open-Meteo `data_spatial/ecmwf_ifs`
+binary chunks from the public, no-referer-lock S3 endpoint
+`https://openmeteo.s3.amazonaws.com/data_spatial/ecmwf_ifs/latest.json?variable=…`.
+Variables used:
+
+| UI layer | OM variable | Cadence |
+|---|---|---|
+| Daily HIGH | `temperature_2m_max` | 3-hourly preceding-period max, out ~6 days |
+| Daily LOW  | `temperature_2m_min` | 3-hourly preceding-period min, out ~6 days |
+| (default)  | 3-hourly `temperature_2m_max` at ~14 PHT heat-of-day | |
+
+**Why ECMWF IFS:** It is the only verified global model on the Open-Meteo public
+spatial endpoint that exposes both `temperature_2m_max` and `temperature_2m_min` with
+no API key (DWD ICON is EU-only; GFS/GEM/ARPEGE/UKMO/JMA were probed 2026-10-23 and
+returned 404 on this S3 endpoint). License: CC BY 4.0 (ECMWF via Open-Meteo) —
+non-commercial free, attribution required. Fixtures:
+`docs/verification/ecmwf-ifs-spatial-2026-10-23-{t2m,t2m_max,t2m_min}.json`.
+
+**How it is rendered:** Tiles are decoded in-browser via the vendored copy of
+`@openmeteo/weather-map-layer@0.3.0` (MIT, under `public/vendor/omdl/`). A
+WASM+Web Worker decoder reads the OM binary format and returns `ImageBitmap` tiles
+to MapLibre GL JS through the `om://` custom MapLibre protocol. No server-side raster
+generation is required — everything runs on the client, which fits the Cloudflare
+Workers + Workers Assets static-frontend model. **There are no API keys, no new
+infrastructure, and no paid services.**
+
+**Geographic alignment & no-data handling:**
+- CRS is WGS84/EPSG:4326 (explicit in the metadata `crs_wkt`); the library reprojects
+  tiles to Web Mercator for MapLibre using the grid's native lat/lon coordinates.
+  No hardcoded pixel offsets are used.
+- Ocean/lake cells are no-data and remain transparent (the OSM basemap shows through).
+  Colors are not extended into unsupported regions.
+- Display uses bilinear upscaling when zoomed in past native resolution; the legend
+  and source panel label this explicitly as "display interpolation" vs native grid
+  resolution. Square tiles visible at very high zoom reflect the native ~9 km model
+  cells, not seams or mis-registration.
+
+**Two complementary views:**
+1. **National temperature (default)** — PH-wide continuous overlay, municipal
+   fill/outline layers hidden so dark borders don't obscure the temperature field,
+   map auto-fits to the Philippines extent (Batanes → Tawi-Tawi), fixed °C legend
+   (20–38 °C, physically comparable across time), and a time-step dropdown (PHT).
+2. **Zamboanga del Norte LGUs** — unchanged 27-LGU Voronoi choropleth with point
+   consensus, click/hover, selected-LGU outline, model table and bulletin. This view
+   explicitly labels the Voronoi polygons as approximate (non-official).
+
+Switching views just toggles layer visibility + the overlay source; the muni-fill and
+muni-line layers are never destroyed, so LGU feature state (selection/hover) persists.
+
+**Graceful failure:** If the Open-Meteo S3 metadata fetch fails (offline, blocked,
+CORS outage, or 4xx/5xx), a warning banner appears in the controls panel, the
+overlay is not installed, and the user can still use the Zamboanga LGU view plus
+the table/bulletin/API. The worker-side point forecast pipeline is unchanged and
+does not depend on the spatial overlay.
+
+**Files added/changed for this feature:**
+- `public/app-om.js` (new) — ES module that registers the `om://` protocol, caches
+  `latest.json` metadata, maps UI var/date → OM variable + valid_time.
+- `public/vendor/omdl/*` (new, vendored) — `@openmeteo/weather-map-layer@0.3.0` dist
+  (JS + WASM + Web Worker), served as static assets.
+- `public/app.js` — added national-view state; `addNationalOverlay`,
+  `installOrUpdateOmSource`, `removeOmSource`, `applyViewMode`, `flyToView`,
+  `syncOverlayTimeOptions` helpers; national vs LGU view toggle; fixed-scale legend
+  and PHT time labels; `mapReady()` relaxed in national mode so it no longer blocks
+  on the muni source; muni data refresh skipped when not in LGU view.
+- `public/index.html` — added "Map view" `<select>`, "National overlay time"
+  `<select>` with metadata line, `#warnOverlay` banner.
+- `public/styles.css` — small additions for overlay control / legend small-text.
+- `docs/verification/ecmwf-ifs-spatial-2026-10-23-*.json` — metadata fixtures.
+- `test/national-overlay.test.js` (new) — 11 tests covering the toggle/default,
+  S3-vs-referer-locked host choice, vendored assets presence, live ECMWF metadata
+  reachability, PH-extent bounds, view-mode layer visibility, fixed-scale legend,
+  no-fabrication disclaimers, attribution text, and legacy LGU regression.
+
+**Out of scope for this release (kept temperature-only per standing constraint):**
+rain, wind, storm tracks, Facebook changes, server-side raster generation, production
+secrets/cron changes.
+
+## 13. License
 
 MIT. Weather data © Open-Meteo.com (CC-BY 4.0, non-commercial; see
 https://open-meteo.com/en/terms). Underlying NWP centres retain their own
-licenses; this project does not redistribute raw model grids — it derives a
-median consensus from point forecasts served by Open-Meteo.
+licenses. For the Zamboanga del Norte consensus view, this project derives a median
+from Open-Meteo point forecasts; for the national view it renders ECMWF IFS grids
+served by Open-Meteo's public spatial endpoint in-browser.
 
 The municipal-boundary GeoJSON (`public/data/zamboanga_del_norte_approx.geojson`) is a
 generated Voronoi approximation from municipal centroids and is NOT an official
 administrative boundary. It is included solely for visualization purposes; replace it
 with an authoritative PSA/OSM/PH-GOV boundary source before any publication-quality use.
+
+The national overlay's ECMWF IFS grid is native ~9 km numerical output; bilinear
+upscaling at zoom levels past native resolution is a display interpolation, not new
+information.
