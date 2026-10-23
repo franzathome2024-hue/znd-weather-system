@@ -23,6 +23,7 @@ import { runPipeline } from "../pipeline.js";
 import { LOCATIONS } from "../locations.js";
 import { IMPLEMENTED_MODELS, UNAVAILABLE_MODELS, OPEN_METEO_ATTRIBUTION, MODEL_REGISTRY, FEED_COUNTS } from "../models.js";
 import { generateBisayaBulletin } from "../bulletin/bisaya.js";
+import { mergeAiwpIntoBundle } from "../aiwp.js";
 
 const CACHE_VERSION = "znd-forecast-v0.2";
 const REFRESH_LOCK_KEY = "znd:forecast:refresh-lock";
@@ -64,7 +65,9 @@ export default {
     ctx.waitUntil((async () => {
       const days = forecastDays(env);
       try {
-        await refreshForecast(env, { reason: "scheduled", days });
+        // In scheduled() there is no incoming request URL; fall back to a
+        // synthetic origin. ASSETS.fetch resolves the path against /public.
+        await refreshForecast(env, { reason: "scheduled", days, assetBase: "https://aiwp-assets.local/" });
       } catch (e) {
         console.error("scheduled refresh failed:", e);
       }
@@ -88,6 +91,8 @@ async function handleApi(request, env, ctx) {
           priority: m.priority, nativeResKm: m.nativeResKm,
           license: m.license, attribution: m.attribution,
           aliasGroup: m.aliasGroup, evidence: m.evidence,
+          consensusEligible: m.consensusEligible, exclusionReason: m.exclusionReason,
+          source: m.source,
           lastVerifiedAt: m.lastVerifiedAt,
         })),
         unavailable: UNAVAILABLE_MODELS,
@@ -107,12 +112,12 @@ async function handleApi(request, env, ctx) {
     if (url.pathname === "/api/forecast" || url.pathname === "/api/forecast/raw") {
       const force = url.searchParams.get("force") === "1" || url.pathname === "/api/forecast/raw";
       const days = clamp(parseInt(url.searchParams.get("days") || String(forecastDays(env)), 10) || forecastDays(env), 1, 16);
-      const bundle = await getForecast(env, ctx, { force, days });
+      const bundle = await getForecast(env, ctx, { force, days, assetBase: url.origin });
       return json(bundle);
     }
     if (url.pathname === "/api/bulletin") {
       const day = clamp(parseInt(url.searchParams.get("day") || "0", 10) || 0, 0, 6);
-      const bundle = await getForecast(env, ctx, { force: false, days: 7 });
+      const bundle = await getForecast(env, ctx, { force: false, days: 7, assetBase: url.origin });
       const text = generateBisayaBulletin(bundle, day);
       return new Response(text, { headers: { "content-type": "text/plain; charset=utf-8", ...corsHeaders() } });
     }
@@ -155,10 +160,20 @@ async function readCache(env, days) {
   } catch (_) { return null; }
 }
 
-async function getForecast(env, ctx, { force = false, days = 7 } = {}) {
+async function getForecast(env, ctx, { force = false, days = 7, assetBase = null } = {}) {
   // 1) If KV exists, try to read cached.
   const cached = await readCache(env, days);
   const hasKv = !!env.FORECAST_CACHE;
+  const mergeAiwp = async (b) => {
+    try {
+      await mergeAiwpIntoBundle(b, {
+        assetsFetch: env.ASSETS?.fetch ? env.ASSETS.fetch.bind(env.ASSETS) : null,
+        origin: assetBase,
+        fetchFn: globalThis.fetch?.bind(globalThis),
+      });
+    } catch (e) { b.aiwp = { available: false, stale: true, error: String(e?.message || e), models: [], fetchedAt: null }; }
+    return b;
+  };
 
   if (!force && cached) {
     const ageMs = Date.now() - new Date(cached.completedAt || cached.startedAt || 0).getTime();
@@ -166,20 +181,20 @@ async function getForecast(env, ctx, { force = false, days = 7 } = {}) {
       cached.fromCache = true;
       cached.stale = false;
       cached.persistentCacheUsed = hasKv;
-      return cached;
+      return await mergeAiwp(cached);
     }
     // Stale: return cached immediately, refresh in background
     cached.fromCache = true;
     cached.stale = true;
     cached.persistentCacheUsed = hasKv;
     if (ctx && typeof ctx.waitUntil === "function") {
-      ctx.waitUntil(refreshForecast(env, { reason: "stale", days }).catch((e) => console.error("background refresh failed:", e)));
+      ctx.waitUntil(refreshForecast(env, { reason: "stale", days, assetBase }).catch((e) => console.error("background refresh failed:", e)));
     }
-    return cached;
+    return await mergeAiwp(cached);
   }
 
   // No cached value (or force): run refresh
-  return await refreshForecast(env, { reason: force ? "force" : "cold", days });
+  return await refreshForecast(env, { reason: force ? "force" : "cold", days, assetBase });
 }
 
 async function acquireLock(env) {
@@ -204,9 +219,10 @@ async function acquireLock(env) {
       kvAcquired = true;
     } catch (_) { kvAcquired = false; }
   }
+  const assetBase = _opts?.assetBase || null;
   const promise = (async () => {
     try {
-      return await runPipeline({
+      const bundle = await runPipeline({
         fetchFn: globalThis.fetch.bind(globalThis),
         store: storeFromEnv(env),
         days: forecastDays(env),
@@ -215,6 +231,14 @@ async function acquireLock(env) {
         maxRetries: maxRetries(env),
         force: true,
       });
+      try {
+        await mergeAiwpIntoBundle(bundle, {
+          assetsFetch: env.ASSETS?.fetch ? env.ASSETS.fetch.bind(env.ASSETS) : null,
+          origin: assetBase,
+          fetchFn: globalThis.fetch?.bind(globalThis),
+        });
+      } catch (e) { bundle.aiwp = { available: false, stale: true, error: String(e?.message || e), models: [], fetchedAt: null }; }
+      return bundle;
     } finally {
       if (kvAcquired && env.FORECAST_CACHE?.delete) {
         try { await env.FORECAST_CACHE.delete(REFRESH_LOCK_KEY); } catch (_) {}
@@ -228,26 +252,32 @@ async function acquireLock(env) {
 
 async function refreshForecast(env, _opts = {}) {
   const days = _opts.days || forecastDays(env);
+  const assetBase = _opts.assetBase || null;
+  const mergeAiwp = async (b) => {
+    try {
+      await mergeAiwpIntoBundle(b, {
+        assetsFetch: env.ASSETS?.fetch ? env.ASSETS.fetch.bind(env.ASSETS) : null,
+        origin: assetBase,
+        fetchFn: globalThis.fetch?.bind(globalThis),
+      });
+    } catch (e) { b.aiwp = { available: false, stale: true, error: String(e?.message || e), models: [], fetchedAt: null }; }
+    return b;
+  };
   const lock = await acquireLock(env);
   if (!lock.acquired && lock.promise) {
-    // Another in-flight refresh; wait for it to finish and return its result.
     try { return await lock.promise; }
     catch (e) {
-      // If the in-flight refresh fails, fall through to try again? No — respect
-      // the lock; the caller will see whatever cache exists.
       const cached = await readCache(env, days);
-      if (cached) { cached.stale = true; cached.fromCache = true; return cached; }
+      if (cached) { cached.stale = true; cached.fromCache = true; return mergeAiwp(cached); }
       throw e;
     }
   }
   if (!lock.acquired) {
-    // KV lock held by another Worker; return whatever cache we have (stale is ok).
     const cached = await readCache(env, days);
     if (cached) {
       cached.fromCache = true; cached.stale = true; cached.lockContended = true;
-      return cached;
+      return mergeAiwp(cached);
     }
-    // No cache and lock held — wait briefly and try one more time
     await sleep(500);
     return refreshForecast(env, { ..._opts, reason: _opts.reason + ":lock-retry" });
   }
