@@ -8,6 +8,7 @@
   --fg: #e6edf3;
   --fg-dim: #9aa7b4;
   --accent: #4fc3f7;
+  --accent-1: #f1c03a;
   --accent-2: #ffb74d;
   --danger: #ef5350;
   --ok: #66bb6a;
@@ -28,6 +29,7 @@
     --fg: #1b1f24;
     --fg-dim: #5b6673;
     --accent: #0277bd;
+    --accent-1: #b8860b;
     --accent-2: #ef6c00;
     --danger: #c62828;
     --ok: #2e7d32;
@@ -50,9 +52,34 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: 
   display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
   padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--bg-2);
 }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 10px;
+  background: linear-gradient(160deg, #1f262f, #0e1116);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.brand-mark img { display: block; width: 40px; height: 40px; }
+.brand-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .brand-kicker { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; color: var(--accent); text-transform: uppercase; }
-.meta { text-align: right; font-family: var(--mono); font-size: 11px; color: var(--fg-dim); }
+.brand h1 { font-size: 20px; line-height: 1.1; letter-spacing: -0.01em; margin: 0; }
+.meta { text-align: right; font-family: var(--mono); font-size: 11px; color: var(--fg-dim); display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
 .meta-row { white-space: nowrap; }
+.meta-links { display: flex; gap: 10px; font-family: var(--sans); font-size: 12px; }
+.meta-links a { color: var(--fg-dim); text-decoration: none; border-bottom: 1px dotted transparent; }
+.meta-links a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* About blurb — breaks the "feature card" rhythm */
+.about-blurb {
+  margin: 12px 0 0; padding: 10px 12px;
+  background: var(--bg); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  line-height: 1.5;
+}
+.about-blurb a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
+
+.legend-note { margin: 8px 0 0; line-height: 1.5; }
 
 .grid {
   display: grid; gap: 12px; padding: 12px;
@@ -90,12 +117,29 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: 
 }
 
 .panel { background: var(--bg-2); border: 1px solid var(--border); padding: 12px; border-radius: var(--radius); }
-.controls      { grid-area: ctrl; }
-.map-panel     { grid-area: map; position: relative; padding: 0; overflow: hidden; min-height: 360px; }
+.controls      { grid-area: ctrl; border-top: 3px solid var(--accent); }
+.map-panel     { grid-area: map; position: relative; padding: 0; overflow: hidden; min-height: 360px; border-top: 3px solid var(--accent-2); }
 .numbers       { grid-area: nums; }
-.datatable-panel { grid-area: table; }
-.bulletin-panel{ grid-area: bulletin; }
-.sources-panel { grid-area: src; }
+.datatable-panel { grid-area: table; border-top: 3px solid var(--fg-dim); }
+.bulletin-panel{ grid-area: bulletin; background: var(--bg-3); }
+.sources-panel { grid-area: src; border-top: 3px solid var(--border); background: var(--bg); }
+.sources-panel h2 { color: var(--fg); }
+
+/* Give the bulletin panel a slightly different feel — monospace header style */
+.bulletin-panel h2 {
+  font-family: var(--mono);
+  font-size: 11px; letter-spacing: 0.12em; color: var(--accent-2);
+}
+.bulletin-panel p { margin: 8px 0 0; }
+
+/* Map panel title strip (small overlay label rather than a duplicated header) */
+.map-panel::before {
+  content: "Zamboanga del Norte · temperature choropleth";
+  position: absolute; top: 8px; left: 10px; z-index: 2;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+  color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); pointer-events: none;
+  text-transform: uppercase;
+}
 
 #map { height: 480px; width: 100%; background: var(--bg-3); }
 @media (max-width: 640px) { #map { height: 360px; } }

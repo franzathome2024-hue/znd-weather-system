@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ZND Weather logo">
+  <!-- stylized sun half-disk peeking behind a cloud, ZND amber + blue -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4fc3f7"/>
+      <stop offset="1" stop-color="#0277bd"/>
+    </linearGradient>
+  </defs>
+  <!-- circular field -->
+  <circle cx="32" cy="32" r="30" fill="url(#sky)" stroke="#161b22" stroke-width="2"/>
+  <!-- sun -->
+  <circle cx="42" cy="24" r="10" fill="#ffb74d"/>
+  <!-- eight rays -->
+  <g stroke="#ffb74d" stroke-width="2" stroke-linecap="round">
+    <line x1="42" y1="8" x2="42" y2="12"/>
+    <line x1="42" y1="36" x2="42" y2="40"/>
+    <line x1="26" y1="24" x2="30" y2="24"/>
+    <line x1="54" y1="24" x2="58" y2="24"/>
+    <line x1="30.5" y1="12.5" x2="33" y2="15"/>
+    <line x1="51" y1="15" x2="53.5" y2="12.5"/>
+    <line x1="30.5" y1="35.5" x2="33" y2="33"/>
+    <line x1="51" y1="33" x2="53.5" y2="35.5"/>
+  </g>
+  <!-- cloud (two overlapping ellipses) -->
+  <g fill="#e6edf3" stroke="#9aa7b4" stroke-width="1.2">
+    <ellipse cx="22" cy="40" rx="13" ry="8"/>
+    <ellipse cx="32" cy="38" rx="11" ry="9"/>
+    <ellipse cx="40" cy="42" rx="9" ry="6"/>
+  </g>
+  <!-- raindrop -->
+  <path d="M20 50 C20 53, 23 56, 23 56 C23 56, 26 53, 26 50 C26 48, 20 48, 20 50 Z" fill="#4fc3f7" opacity="0.85"/>
+  <!-- tiny Z N monogram in cloud -->
+  <text x="32" y="43" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="8" font-weight="700" fill="#161b22">ZND</text>
+</svg>

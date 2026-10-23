@@ -4,20 +4,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>ZND Weather v0.1 — Zamboanga del Norte + Philippines Multi-Model Forecast</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E🌦️%3C/text%3E%3C/svg%3E">
+<meta name="description" content="Independent multi-model temperature forecast for Zamboanga del Norte, Philippines. Aggregates 10 global NWP centres plus PAGASA provincial guidance and AI reference traces.">
+<title>ZND Weather: Zamboanga del Norte consensus forecast</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
 <link rel="stylesheet" href="/styles.css">
 <link rel="stylesheet" href="/vendor/maplibre-gl.css">
+<link rel="me" href="https://github.com/franzathome2024-hue/znd-weather-system">
 </head>
 <body>
 <header class="topbar">
   <div class="brand">
-    <span class="brand-kicker">PHILIPPINES · MULTI-MODEL CONSENSUS + ECMWF NATIONAL OVERLAY</span>
-    <h1>Weather <span class="muted">v0.1</span></h1>
+    <a class="brand-mark" href="/" aria-label="ZND Weather home">
+      <img src="/logo.svg" alt="" width="40" height="40">
+    </a>
+    <div class="brand-text">
+      <span class="brand-kicker">PHILIPPINES · MULTI-MODEL NWP + PAGASA</span>
+      <h1>Zamboanga del Norte <span class="muted">forecast</span></h1>
+    </div>
   </div>
   <div class="meta">
     <div class="meta-row" id="lastUpdate">—</div>
     <div class="meta-row" id="modelCount">—</div>
+    <nav class="meta-links" aria-label="Site links">
+      <a href="https://github.com/franzathome2024-hue/znd-weather-system" rel="noopener" target="_blank" title="Source and issue tracker on GitHub">GitHub</a>
+      <a href="mailto:weather@znd.local?subject=ZND%20Weather%20feedback" title="Send feedback or corrections">Contact</a>
+      <a href="https://bagong.pagasa.dost.gov.ph/" rel="noopener" target="_blank" title="Official PAGASA-DOST forecasts">PAGASA</a>
+    </nav>
   </div>
 </header>
 
@@ -31,7 +43,7 @@
       </select>
     </div>
     <div class="ctrl">
-      <label for="dateSelect">Forecast date (Philippine Time, Asia/Manila)</label>
+      <label for="dateSelect">Forecast date (Philippine Time)</label>
       <select id="dateSelect"></select>
     </div>
     <div class="ctrl">
@@ -57,9 +69,17 @@
       <button id="btnRefresh" type="button">Refresh</button>
     </div>
     <div id="feedCounts" class="small muted mono"></div>
-    <div id="warnStale" class="warn hidden">⚠ Forecast is stale — background refresh in progress.</div>
+    <div id="warnStale" class="warn hidden">⚠ Forecast is stale. A background refresh is in progress.</div>
     <div id="warnErrors" class="warn hidden"></div>
     <div id="warnOverlay" class="warn hidden"></div>
+    <p class="small about-blurb">
+      Independent aggregation of ECMWF, UKMO, DWD ICON, NCEP GFS, Météo-France,
+      ECCC, JMA, NCEP AIGFS and ECMWF AIFS forecasts, weighted against PAGASA's
+      provincial outlook and trimmed of outliers. The two AIWP traces (Pangu,
+      GraphCast) are shown for reference only. Built and maintained by
+      <a href="https://github.com/franzathome2024-hue" rel="noopener" target="_blank">Franz</a>
+      as a public-good project for the 27 municipalities of Zamboanga del Norte.
+    </p>
   </section>
 
   <section class="panel map-panel">
@@ -83,33 +103,87 @@
         <tbody></tbody>
       </table>
     </div>
+    <p class="small muted legend-note">
+      Badges mark source: <span class="badge pagasa">PAGASA · official</span>
+      <span class="badge aiwp">AI ref · non-commercial</span>
+      Parenthesised counts after each date show the consensus method used
+      (weighted mean vs median fallback).
+    </p>
   </section>
 
   <section class="panel datatable-panel">
-    <h2>All locations — consensus high / low (°C)</h2>
+    <h2>All 27 ZN LGUs: consensus high / low (°C)</h2>
     <div class="table-wrap">
       <table id="allTable" class="all-table">
         <colgroup>
           <col class="name"><col class="num-c lo-col"><col class="num-c hi-col"><col class="num-c models-col"><col class="num-c spread-col">
         </colgroup>
-        <thead><tr><th>Location</th><th class="num">Low</th><th class="num">High</th><th class="num">Models</th><th class="num">Spread</th></tr></thead>
+        <thead><tr><th>Municipality</th><th class="num">Low</th><th class="num">High</th><th class="num">Models</th><th class="num">Spread</th></tr></thead>
         <tbody></tbody>
       </table>
     </div>
   </section>
 
   <section class="panel bulletin-panel">
-    <h2>Bisaya text bulletin (plain, low-data, copy-ready)</h2>
+    <h2>Bisaya bulletin</h2>
+    <p class="small muted">Plain text, copy-ready for Facebook or group chat.</p>
     <pre id="bulletinText" class="bulletin" aria-live="polite">Loading…</pre>
-    <div class="small muted">Plain text only — no image required. Copy-paste directly to Facebook.</div>
+    <p class="small muted">Plain text only, no images required. Updates hourly from a Cloudflare Worker.</p>
   </section>
 
   <section class="panel sources-panel">
-    <h2>Source, geographic data &amp; attribution</h2>
+    <h2>Sources, boundaries, disclaimers</h2>
     <div id="sourceBlock" class="small"></div>
-    <p class="disclaimer small muted">Forecasts are point-based representative values at each municipal centre and can differ for inland/coastal barangays. Consensus uses the MEDIAN across independent eligible global models after alias de-duplication; contributor counts are reported separately for high and low. The municipal overlay is a generated Voronoi approximation — NOT an official administrative boundary — used solely for visualization. Basemap © OpenStreetMap contributors. Follow DOST-PAGASA for official warnings.</p>
+    <p class="disclaimer small muted">
+      Forecasts are representative point values at each municipal centre; inland
+      and upland barangays will run cooler, coastal barangays may see different
+      highs. The consensus is a robust weighted mean (PAGASA 2.5,
+      ECMWF/UKMO/NCEP-AIGFS 1.5, other NWP centres 1.0, AIFS 0.5) with
+      outlier values over 2.5σ from the median trimmed before weighting,
+      falling back to a median when fewer than three independent values agree.
+      Contributor counts are reported separately for high and low.
+    </p>
+    <p class="disclaimer small muted">
+      The municipal overlay is a generated Voronoi approximation, not an
+      official PSA/PSGC boundary, used for visualization only. Basemap ©
+      OpenStreetMap contributors. Always follow DOST-PAGASA tropical cyclone
+      warnings and rainfall advisories for official decisions.
+    </p>
+    <p class="disclaimer small muted">
+      Questions or corrections? Open an issue on
+      <a href="https://github.com/franzathome2024-hue/znd-weather-system/issues" rel="noopener" target="_blank">GitHub</a>
+      or email via the Contact link in the header.
+    </p>
   </section>
 </main>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "ZND Weather",
+  "url": "https://znd-weather.pages.dev/",
+  "applicationCategory": "WeatherApplication",
+  "operatingSystem": "Any",
+  "inLanguage": ["ceb", "en", "fil"],
+  "description": "Independent multi-model temperature consensus forecast for the 27 municipalities of Zamboanga del Norte, Philippines, combining ECMWF, UKMO, DWD ICON, NCEP GFS, Météo-France, ECCC, JMA, NCEP AIGFS, ECMWF AIFS, and PAGASA provincial guidance.",
+  "provider": {
+    "@type": "Organization",
+    "name": "PAGASA-DOST",
+    "url": "https://bagong.pagasa.dost.gov.ph/"
+  },
+  "creator": {
+    "@type": "Person",
+    "name": "Franz",
+    "url": "https://github.com/franzathome2024-hue"
+  },
+  "spatialCoverage": {
+    "@type": "Place",
+    "name": "Zamboanga del Norte, Philippines"
+  },
+  "temporalCoverage": "PT168H"
+}
+</script>
 
 <script src="/vendor/maplibre-gl.js"></script>
 <script type="module" src="/app-om.js"></script>

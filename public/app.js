@@ -797,10 +797,10 @@ function renderSources() {
   const m = state.models || { implemented: [], unavailable: [], registry: [] };
   const lines = [];
   lines.push(`<b>National temperature overlay:</b> ECMWF IFS (O1280 reduced-Gaussian, ~9 km global, WGS84 lon/lat) temperature_2m / temperature_2m_max / temperature_2m_min fields, rendered client-side via Open-Meteo weather-map-layer (MIT) from public S3 chunks; data © ECMWF via Open-Meteo, <a href="https://open-meteo.com/en/license" target="_blank" rel="noopener">CC BY 4.0</a>. Bilinear resampling on display only — native grid cells remain ~9 km; squares/seams visible at high zoom reflect model resolution, not stitching artifacts. Ocean cells are no-data (transparent). Times shown in Asia/Manila (UTC+8).`);
-  lines.push(`<br><b>Geographic data:</b> Zamboanga del Norte municipal overlay is a generated Voronoi approximation from verified municipal centroids (NOT official administrative boundaries — visualization only; "LGU View" discloses this). Basemap © OpenStreetMap contributors (ODbL). Representative points: Wikipedia / Philatlas / Open-Meteo geocoding cross-check (town centres).`);
+  lines.push(`<br><b>Geographic data:</b> Zamboanga del Norte municipal overlay is a generated Voronoi approximation from verified municipal centroids (NOT official administrative boundaries; visualization only; "LGU View" discloses this). Basemap © OpenStreetMap contributors (ODbL). Representative points: Wikipedia / Philatlas / Open-Meteo geocoding cross-check (town centres).`);
   lines.push(`<br><b>${m.implemented?.length || 0} eligible independent models for Zamboanga del Norte, implemented via Open-Meteo CC-BY 4.0 (non-commercial):</b>`);
   lines.push("<ul>");
-  for (const im of (m.implemented || [])) lines.push(`<li><b>${im.shortLabel}</b> — ${im.centre} (~${im.nativeResKm} km)${im.aliasGroup ? ` [alias-group: ${im.aliasGroup}]` : ""}</li>`);
+  for (const im of (m.implemented || [])) lines.push(`<li><b>${im.shortLabel}</b>: ${im.centre} (~${im.nativeResKm} km)${im.aliasGroup ? ` [alias-group: ${im.aliasGroup}]` : ""}</li>`);
   lines.push("</ul>");
   const unavail = (m.unavailable || []).filter((u) => u.status !== "excluded_by_design");
   if (unavail.length) {
@@ -820,9 +820,9 @@ async function renderBulletin() {
   const day = state.selectedDateIdx;
   try {
     const r = await fetch(`/api/bulletin?day=${day}`);
-    $("#bulletinText").textContent = r.ok ? await r.text() : `(Bulletin unavailable — HTTP ${r.status})`;
+    $("#bulletinText").textContent = r.ok ? await r.text() : `(Bulletin unavailable: HTTP ${r.status})`;
   } catch (e) {
-    $("#bulletinText").textContent = "(Bulletin unavailable — " + e.message + ")";
+    $("#bulletinText").textContent = "(Bulletin unavailable: " + e.message + ")";
   }
 }
 
